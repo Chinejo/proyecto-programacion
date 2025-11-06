@@ -1,0 +1,206 @@
+.ventas-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ventas-container h2 {
+  color: #8B4513;
+  margin-bottom: 2rem;
+}
+
+.venta-form {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.venta-form h3 {
+  margin-top: 0;
+  color: #8B4513;
+}
+
+.form-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-group select,
+.form-group input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group select {
+  flex: 2;
+  min-width: 250px;
+}
+
+.form-group input {
+  flex: 0.5;
+  min-width: 100px;
+}
+
+.form-group button {
+  padding: 0.5rem 1.5rem;
+  background-color: #8B4513;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.form-group button:hover {
+  background-color: #D2691E;
+}
+
+.venta-actual {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.venta-actual h3 {
+  color: #8B4513;
+  margin-top: 0;
+}
+
+.venta-actual table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.venta-actual th,
+.venta-actual td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.venta-actual th {
+  background-color: #8B4513;
+  color: white;
+}
+
+.cantidad-input {
+  width: 80px;
+  padding: 0.3rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.btn-eliminar {
+  padding: 0.4rem 1rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-eliminar:hover {
+  background-color: #c82333;
+}
+
+.venta-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 2px solid #8B4513;
+}
+
+.venta-total h3 {
+  color: #8B4513;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.venta-acciones {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-finalizar,
+.btn-cancelar {
+  padding: 0.6rem 2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.btn-finalizar {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-finalizar:hover {
+  background-color: #218838;
+}
+
+.btn-cancelar {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancelar:hover {
+  background-color: #5a6268;
+}
+
+.historial-ventas {
+  margin-top: 2rem;
+}
+
+.historial-ventas h3 {
+  color: #8B4513;
+  margin-bottom: 1rem;
+}
+
+.venta-card {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.venta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.venta-fecha {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.venta-total {
+  color: #8B4513;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.venta-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.venta-items li {
+  padding: 0.3rem 0;
+  color: #555;
+}
