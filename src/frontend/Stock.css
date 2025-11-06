@@ -69,6 +69,13 @@
   margin-bottom: 1rem;
 }
 
+.empty-message {
+  text-align: center;
+  color: #999;
+  padding: 2rem;
+  font-style: italic;
+}
+
 .stock-list table {
   width: 100%;
   border-collapse: collapse;

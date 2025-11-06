@@ -1,20 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Ventas.css';
+import { productosAPI, ventasAPI } from '../services/api';
 
 function Ventas() {
-  // Productos disponibles (en una app real, vendrían de un estado global o API)
-  const [productosDisponibles] = useState([
-    { id: 1, nombre: 'Pan Francés', precio: 150, stock: 50 },
-    { id: 2, nombre: 'Medialunas', precio: 80, stock: 100 },
-    { id: 3, nombre: 'Facturas', precio: 100, stock: 75 },
-    { id: 4, nombre: 'Pan Integral', precio: 200, stock: 30 },
-    { id: 5, nombre: 'Croissants', precio: 120, stock: 40 }
-  ]);
-
+  const [productosDisponibles, setProductosDisponibles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [ventaActual, setVentaActual] = useState([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState('');
   const [cantidad, setCantidad] = useState(1);
   const [ventas, setVentas] = useState([]);
+
+  // Cargar productos y ventas al montar
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [productosData, ventasData] = await Promise.all([
+        productosAPI.getAll(),
+        ventasAPI.getAll()
+      ]);
+      setProductosDisponibles(productosData);
+      setVentas(ventasData);
+    } catch (error) {
+      alert(`Error al cargar datos: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const agregarProductoVenta = () => {
     if (!productoSeleccionado) return;
@@ -67,22 +82,28 @@ function Ventas() {
     );
   };
 
-  const finalizarVenta = () => {
+  const finalizarVenta = async () => {
     if (ventaActual.length === 0) {
       alert('Agregue productos a la venta');
       return;
     }
 
-    const nuevaVenta = {
-      id: Date.now(),
-      fecha: new Date().toLocaleString(),
-      items: [...ventaActual],
-      total: calcularTotal()
-    };
+    try {
+      const items = ventaActual.map(item => ({
+        producto_id: item.producto.id,
+        cantidad: item.cantidad,
+        precio_unitario: item.producto.precio
+      }));
 
-    setVentas([nuevaVenta, ...ventas]);
-    setVentaActual([]);
-    alert('Venta registrada exitosamente!');
+      await ventasAPI.create({ items });
+      
+      // Recargar datos
+      await loadData();
+      setVentaActual([]);
+      alert('Venta registrada exitosamente!');
+    } catch (error) {
+      alert(`Error al registrar venta: ${error.message}`);
+    }
   };
 
   const cancelarVenta = () => {
@@ -93,6 +114,10 @@ function Ventas() {
     <div className="ventas-container">
       <h2>Registrar Venta</h2>
       
+      {loading ? (
+        <p>Cargando datos...</p>
+      ) : (
+        <>
       <div className="venta-form">
         <h3>Nueva Venta</h3>
         <div className="form-group">
@@ -180,14 +205,16 @@ function Ventas() {
               </div>
               <ul className="venta-items">
                 {venta.items.map(item => (
-                  <li key={item.producto.id}>
-                    {item.producto.nombre} x {item.cantidad} = ${item.producto.precio * item.cantidad}
+                  <li key={item.id || item.producto_id}>
+                    {item.producto_nombre || item.producto?.nombre} x {item.cantidad} = ${item.precio_unitario * item.cantidad}
                   </li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

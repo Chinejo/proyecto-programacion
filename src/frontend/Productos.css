@@ -137,3 +137,279 @@
 .btn-eliminar:hover {
   background-color: #c82333;
 }
+
+.btn-receta {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-receta:hover {
+  background-color: #138496;
+}
+
+.receta-info {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.receta-info-vacia {
+  color: #999;
+  font-style: italic;
+}
+
+/* Modal de Receta */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h3 {
+  color: #8B4513;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #D2691E;
+  padding-bottom: 0.5rem;
+}
+
+.modal-content h4 {
+  color: #8B4513;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.tipo-receta-selector {
+  background-color: #e8f4f8;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 2px solid #17a2b8;
+}
+
+.tipo-receta-selector > label {
+  display: block;
+  font-weight: bold;
+  color: #8B4513;
+  margin-bottom: 0.5rem;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.radio-label:hover {
+  background-color: #f0f8ff;
+}
+
+.radio-label input[type="radio"] {
+  margin-top: 0.2rem;
+  cursor: pointer;
+}
+
+.radio-label span {
+  font-weight: 600;
+  color: #333;
+}
+
+.radio-label small {
+  display: block;
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+  font-weight: normal;
+}
+
+.radio-label input[type="radio"]:checked + span {
+  color: #17a2b8;
+}
+
+.receta-actual {
+  background-color: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.ingredientes-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.ingredientes-lista li {
+  padding: 0.5rem;
+  background-color: white;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #ddd;
+}
+
+.btn-eliminar-ingrediente {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-eliminar-ingrediente:hover {
+  background-color: #c82333;
+}
+
+.sin-ingredientes {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.agregar-ingrediente {
+  background-color: #f0f8ff;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.form-group-ingrediente {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.form-group-ingrediente select,
+.form-group-ingrediente input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.form-group-ingrediente select:first-child {
+  flex: 2;
+  min-width: 150px;
+}
+
+.form-group-ingrediente input {
+  flex: 1;
+  min-width: 80px;
+}
+
+.form-group-ingrediente select:nth-child(3) {
+  flex: 0.5;
+  min-width: 80px;
+}
+
+.form-group-ingrediente button {
+  padding: 0.5rem 1rem;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.form-group-ingrediente button:hover {
+  background-color: #218838;
+}
+
+.preparar-receta {
+  background-color: #fff3cd;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #ffc107;
+}
+
+.preparar-receta p {
+  color: #856404;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.form-group-preparar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.form-group-preparar input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.unidad-label {
+  color: #856404;
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.btn-preparar {
+  padding: 0.5rem 1.5rem;
+  background-color: #ffc107;
+  color: #333;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-preparar:hover {
+  background-color: #e0a800;
+}
+
+.btn-cerrar-modal {
+  width: 100%;
+  padding: 0.7rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-cerrar-modal:hover {
+  background-color: #5a6268;
+}

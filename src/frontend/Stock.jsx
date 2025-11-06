@@ -1,37 +1,55 @@
 import { useState } from 'react';
 import './Stock.css';
+import { stockAPI } from '../services/api';
 
-function Stock() {
-  const [stockItems, setStockItems] = useState([
-    { id: 1, nombre: 'Harina', cantidad: 50, unidad: 'kg' },
-    { id: 2, nombre: 'Azúcar', cantidad: 30, unidad: 'kg' },
-    { id: 3, nombre: 'Levadura', cantidad: 10, unidad: 'kg' }
-  ]);
-  
+function Stock({ stockItems, setStockItems, reloadStock }) {
   const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: '', unidad: 'kg' });
+  const [loading, setLoading] = useState(false);
 
-  const agregarItem = (e) => {
+  const agregarItem = async (e) => {
     e.preventDefault();
     if (nuevoItem.nombre && nuevoItem.cantidad) {
-      const item = {
-        id: Date.now(),
-        nombre: nuevoItem.nombre,
-        cantidad: parseFloat(nuevoItem.cantidad),
-        unidad: nuevoItem.unidad
-      };
-      setStockItems([...stockItems, item]);
-      setNuevoItem({ nombre: '', cantidad: '', unidad: 'kg' });
+      try {
+        setLoading(true);
+        const item = await stockAPI.create({
+          nombre: nuevoItem.nombre,
+          cantidad: parseFloat(nuevoItem.cantidad),
+          unidad: nuevoItem.unidad
+        });
+        setStockItems([...stockItems, item]);
+        setNuevoItem({ nombre: '', cantidad: '', unidad: 'kg' });
+        alert('Item agregado correctamente');
+      } catch (error) {
+        alert(`Error al agregar item: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const modificarCantidad = (id, nuevaCantidad) => {
-    setStockItems(stockItems.map(item => 
-      item.id === id ? { ...item, cantidad: parseFloat(nuevaCantidad) } : item
-    ));
+  const modificarCantidad = async (id, nuevaCantidad) => {
+    try {
+      await stockAPI.update(id, { cantidad: parseFloat(nuevaCantidad) });
+      setStockItems(stockItems.map(item => 
+        item.id === id ? { ...item, cantidad: parseFloat(nuevaCantidad) } : item
+      ));
+    } catch (error) {
+      alert(`Error al actualizar cantidad: ${error.message}`);
+      // Recargar para sincronizar
+      reloadStock();
+    }
   };
 
-  const eliminarItem = (id) => {
-    setStockItems(stockItems.filter(item => item.id !== id));
+  const eliminarItem = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este item?')) return;
+    
+    try {
+      await stockAPI.delete(id);
+      setStockItems(stockItems.filter(item => item.id !== id));
+      alert('Item eliminado correctamente');
+    } catch (error) {
+      alert(`Error al eliminar item: ${error.message}`);
+    }
   };
 
   return (
@@ -46,6 +64,7 @@ function Stock() {
             placeholder="Nombre del item"
             value={nuevoItem.nombre}
             onChange={(e) => setNuevoItem({ ...nuevoItem, nombre: e.target.value })}
+            disabled={loading}
           />
           <input
             type="number"
@@ -53,60 +72,69 @@ function Stock() {
             step="0.01"
             value={nuevoItem.cantidad}
             onChange={(e) => setNuevoItem({ ...nuevoItem, cantidad: e.target.value })}
+            disabled={loading}
           />
           <select 
             value={nuevoItem.unidad}
             onChange={(e) => setNuevoItem({ ...nuevoItem, unidad: e.target.value })}
+            disabled={loading}
           >
             <option value="kg">kg</option>
             <option value="g">g</option>
             <option value="L">L</option>
             <option value="unidades">unidades</option>
           </select>
-          <button type="submit">Agregar</button>
+          <button type="submit" disabled={loading}>
+            {loading ? 'Agregando...' : 'Agregar'}
+          </button>
         </div>
       </form>
 
       <div className="stock-list">
         <h3>Inventario Actual</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Cantidad</th>
-              <th>Unidad</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stockItems.map(item => (
-              <tr key={item.id}>
-                <td>{item.nombre}</td>
-                <td>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.cantidad}
-                    onChange={(e) => modificarCantidad(item.id, e.target.value)}
-                    className="cantidad-input"
-                  />
-                </td>
-                <td>{item.unidad}</td>
-                <td>
-                  <button 
-                    className="btn-eliminar"
-                    onClick={() => eliminarItem(item.id)}
-                  >
-                    Eliminar
-                  </button>
-                </td>
+        {stockItems.length === 0 ? (
+          <p className="empty-message">No hay items en el stock. Agrega algunos para comenzar.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Cantidad</th>
+                <th>Unidad</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {stockItems.map(item => (
+                <tr key={item.id}>
+                  <td>{item.nombre}</td>
+                  <td>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.cantidad}
+                      onChange={(e) => modificarCantidad(item.id, e.target.value)}
+                      className="cantidad-input"
+                    />
+                  </td>
+                  <td>{item.unidad}</td>
+                  <td>
+                    <button 
+                      className="btn-eliminar"
+                      onClick={() => eliminarItem(item.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
 
 export default Stock;
+
