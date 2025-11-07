@@ -376,7 +376,6 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                         onChange={(e) => setIngredienteReceta({ ...ingredienteReceta, unidad: e.target.value })}
                       >
                         <option value="kg">kg</option>
-                        <option value="g">g</option>
                         <option value="L">L</option>
                         <option value="unidades">unidades</option>
                       </select>

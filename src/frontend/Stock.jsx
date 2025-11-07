@@ -80,7 +80,6 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
             disabled={loading}
           >
             <option value="kg">kg</option>
-            <option value="g">g</option>
             <option value="L">L</option>
             <option value="unidades">unidades</option>
           </select>
