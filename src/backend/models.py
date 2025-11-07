@@ -14,9 +14,6 @@ class Stock(Base):
     nombre = Column(String, unique=True, index=True, nullable=False)
     cantidad = Column(Float, nullable=False)
     unidad = Column(String, nullable=False)
-    
-    # Relación con ingredientes de recetas
-    ingredientes_receta = relationship("IngredienteReceta", back_populates="stock_item")
 
 class Producto(Base):
     __tablename__ = "productos"
@@ -42,8 +39,6 @@ class IngredienteReceta(Base):
     
     # Relaciones
     producto = relationship("Producto", back_populates="receta")
-    stock_item = relationship("Stock", back_populates="ingredientes_receta", foreign_keys=[ingrediente], 
-                             primaryjoin="IngredienteReceta.ingrediente == Stock.nombre")
 
 class Venta(Base):
     __tablename__ = "ventas"
