@@ -288,11 +288,14 @@ def init_database(db: Session = Depends(get_db)):
     if db.query(models.Stock).count() > 0:
         raise HTTPException(status_code=400, detail="La base de datos ya tiene datos")
     
-    # Crear items de stock
+    # Crear items de stock con cantidades suficientes para pruebas
     stock_items = [
-        models.Stock(nombre="Harina", cantidad=50, unidad="kg"),
-        models.Stock(nombre="Azúcar", cantidad=30, unidad="kg"),
-        models.Stock(nombre="Levadura", cantidad=10, unidad="kg"),
+        models.Stock(nombre="Harina", cantidad=500, unidad="kg"),  # Suficiente para ~1000 panes o 20000 medialunas
+        models.Stock(nombre="Azúcar", cantidad=300, unidad="kg"),  # Suficiente para ~20000 medialunas o 750 tortas
+        models.Stock(nombre="Levadura", cantidad=50, unidad="kg"),  # Suficiente para ~2500 panes o 50000 medialunas
+        models.Stock(nombre="Manteca", cantidad=100, unidad="kg"), # Ingrediente adicional para pruebas
+        models.Stock(nombre="Leche", cantidad=200, unidad="L"),    # Ingrediente adicional para pruebas
+        models.Stock(nombre="Agua", cantidad=1000, unidad="L"),    # Ingrediente adicional para pruebas
     ]
     
     for item in stock_items:
@@ -306,7 +309,8 @@ def init_database(db: Session = Depends(get_db)):
             "producto": models.Producto(nombre="Pan Francés", precio=150, stock=50, tipo_receta=models.TipoRecetaEnum.KG),
             "receta": [
                 {"ingrediente": "Harina", "cantidad": 0.5, "unidad": "kg"},
-                {"ingrediente": "Levadura", "cantidad": 0.02, "unidad": "kg"}
+                {"ingrediente": "Levadura", "cantidad": 0.02, "unidad": "kg"},
+                {"ingrediente": "Agua", "cantidad": 0.3, "unidad": "L"}
             ]
         },
         {
@@ -314,14 +318,17 @@ def init_database(db: Session = Depends(get_db)):
             "receta": [
                 {"ingrediente": "Harina", "cantidad": 0.03, "unidad": "kg"},
                 {"ingrediente": "Azúcar", "cantidad": 0.01, "unidad": "kg"},
-                {"ingrediente": "Levadura", "cantidad": 0.001, "unidad": "kg"}
+                {"ingrediente": "Levadura", "cantidad": 0.001, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.005, "unidad": "kg"}
             ]
         },
         {
             "producto": models.Producto(nombre="Facturas", precio=100, stock=75, tipo_receta=models.TipoRecetaEnum.UNIDAD),
             "receta": [
                 {"ingrediente": "Harina", "cantidad": 0.04, "unidad": "kg"},
-                {"ingrediente": "Azúcar", "cantidad": 0.015, "unidad": "kg"}
+                {"ingrediente": "Azúcar", "cantidad": 0.015, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.01, "unidad": "kg"},
+                {"ingrediente": "Leche", "cantidad": 0.02, "unidad": "L"}
             ]
         },
         {
@@ -329,7 +336,17 @@ def init_database(db: Session = Depends(get_db)):
             "receta": [
                 {"ingrediente": "Harina", "cantidad": 0.5, "unidad": "kg"},
                 {"ingrediente": "Azúcar", "cantidad": 0.4, "unidad": "kg"},
-                {"ingrediente": "Levadura", "cantidad": 0.03, "unidad": "kg"}
+                {"ingrediente": "Levadura", "cantidad": 0.03, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.2, "unidad": "kg"}
+            ]
+        },
+        {
+            "producto": models.Producto(nombre="Croissants", precio=120, stock=30, tipo_receta=models.TipoRecetaEnum.UNIDAD),
+            "receta": [
+                {"ingrediente": "Harina", "cantidad": 0.08, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.04, "unidad": "kg"},
+                {"ingrediente": "Leche", "cantidad": 0.03, "unidad": "L"},
+                {"ingrediente": "Levadura", "cantidad": 0.002, "unidad": "kg"}
             ]
         }
     ]
