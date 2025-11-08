@@ -17,9 +17,10 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
   });
   const [precioEditMode, setPrecioEditMode] = useState('unidad'); // 'unidad' o 'kg'
   const [mostrarStockInicial, setMostrarStockInicial] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editando, setEditando] = useState(null);
   const [mostrarReceta, setMostrarReceta] = useState(null);
-  const [ingredienteReceta, setIngredienteReceta] = useState({ ingrediente: '', cantidad: '', unidad: 'kg' });
+  const [ingredienteReceta, setIngredienteReceta] = useState({ ingrediente: '', cantidad: '', unidad: '' });
   const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
 
   // Cargar productos desde la API al montar
@@ -88,6 +89,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       });
       setPrecioEditMode('unidad');
       setMostrarStockInicial(false);
+      setMostrarFormulario(false);
       mostrarModal('¡Éxito!', 'Producto agregado correctamente', 'success');
     } catch (error) {
       mostrarModal('Error', `Error al agregar producto: ${error.message}`, 'error');
@@ -130,7 +132,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       const nuevoIngrediente = await recetasAPI.addIngrediente(productoId, {
         ingrediente: ingredienteReceta.ingrediente,
         cantidad: parseFloat(ingredienteReceta.cantidad),
-        unidad: ingredienteReceta.unidad
+        unidad: stockItem.unidad // Usar la unidad del ingrediente del stock
       });
 
       // Actualizar el producto en el estado local
@@ -145,10 +147,27 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         return p;
       }));
 
-      setIngredienteReceta({ ingrediente: '', cantidad: '', unidad: 'kg' });
+      setIngredienteReceta({ ingrediente: '', cantidad: '', unidad: '' });
       mostrarModal('¡Éxito!', 'Ingrediente agregado correctamente', 'success');
     } catch (error) {
       mostrarModal('Error', `Error al agregar ingrediente: ${error.message}`, 'error');
+    }
+  };
+
+  const handleIngredienteSelect = (nombreIngrediente) => {
+    const stockItem = stockItems.find(s => s.nombre === nombreIngrediente);
+    if (stockItem) {
+      setIngredienteReceta({
+        ingrediente: nombreIngrediente,
+        cantidad: ingredienteReceta.cantidad,
+        unidad: stockItem.unidad
+      });
+    } else {
+      setIngredienteReceta({
+        ingrediente: nombreIngrediente,
+        cantidad: ingredienteReceta.cantidad,
+        unidad: ''
+      });
     }
   };
 
@@ -345,8 +364,17 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       
       <h2>Gestión de Productos</h2>
       
-      <form className="productos-form" onSubmit={agregarProducto}>
-        <h3>Agregar nuevo producto:</h3>
+      <div className="productos-form">
+        <h3 
+          onClick={() => setMostrarFormulario(!mostrarFormulario)}
+          style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <span>{mostrarFormulario ? '▼' : '▶'}</span>
+          Agregar nuevo producto
+        </h3>
+
+        {mostrarFormulario && (
+      <form onSubmit={agregarProducto}>
         
         <div className="form-row">
           <div className="form-field">
@@ -362,7 +390,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         </div>
 
         <div className="form-section">
-          <h4>� 1. Configuración de Receta *</h4>
+          <h4>📋 1. Configuración de Receta *</h4>
           <p className="form-help">
             Primero define cuántas unidades y cuánto peso produce una preparación de la receta.
             Ejemplo: 1 receta de pan produce 8 rodajas que pesan 1 kg en total.
@@ -403,7 +431,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         </div>
 
         <div className={`form-section ${!recetaCompleta ? 'form-section-disabled' : ''}`}>
-          <h4>� 2. Precio * {!recetaCompleta && '(Completa la receta primero)'}</h4>
+          <h4>💵 2. Precio * {!recetaCompleta && '(Completa la receta primero)'}</h4>
           <p className="form-help">
             Ingresa el precio por unidad o por kilogramo. El otro valor se calculará automáticamente según la receta.
           </p>
@@ -501,6 +529,8 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
           </p>
         )}
       </form>
+        )}
+      </div>
 
       <div className="productos-list">
         <h3>Lista de productos:</h3>
@@ -687,12 +717,12 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                     <div className="form-group-ingrediente">
                       <select
                         value={ingredienteReceta.ingrediente}
-                        onChange={(e) => setIngredienteReceta({ ...ingredienteReceta, ingrediente: e.target.value })}
+                        onChange={(e) => handleIngredienteSelect(e.target.value)}
                       >
                         <option value="">Seleccionar ingrediente...</option>
                         {stockItems.map(item => (
                           <option key={item.id} value={item.nombre}>
-                            {item.nombre} (disponible: {item.cantidad} {item.unidad})
+                            {item.nombre}
                           </option>
                         ))}
                       </select>
@@ -703,14 +733,19 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                         value={ingredienteReceta.cantidad}
                         onChange={(e) => setIngredienteReceta({ ...ingredienteReceta, cantidad: e.target.value })}
                       />
-                      <select
+                      <input
+                        type="text"
                         value={ingredienteReceta.unidad}
-                        onChange={(e) => setIngredienteReceta({ ...ingredienteReceta, unidad: e.target.value })}
-                      >
-                        <option value="kg">kg</option>
-                        <option value="L">L</option>
-                        <option value="unidades">unidades</option>
-                      </select>
+                        readOnly
+                        placeholder="Unidad"
+                        style={{ 
+                          backgroundColor: '#f0f0f0',
+                          cursor: 'not-allowed',
+                          width: '80px',
+                          textAlign: 'center'
+                        }}
+                        title="La unidad se define automáticamente según el ingrediente"
+                      />
                       <button onClick={() => agregarIngredienteReceta(producto.id)}>Agregar</button>
                     </div>
                   </div>

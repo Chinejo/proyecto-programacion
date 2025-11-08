@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import './Stock.css';
 import { stockAPI } from '../services/api';
+import Modal from './Modal';
 
 function Stock({ stockItems, setStockItems, reloadStock }) {
   const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: '', unidad: 'kg' });
   const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
+
+  const mostrarModal = (titulo, mensaje, tipo = 'info') => {
+    setModal({ isOpen: true, titulo, mensaje, tipo });
+  };
+
+  const cerrarModal = () => {
+    setModal({ ...modal, isOpen: false });
+  };
 
   const agregarItem = async (e) => {
     e.preventDefault();
@@ -18,9 +28,9 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
         });
         setStockItems([...stockItems, item]);
         setNuevoItem({ nombre: '', cantidad: '', unidad: 'kg' });
-        alert('Item agregado correctamente');
+        mostrarModal('¡Éxito!', 'Ingrediente agregado correctamente', 'success');
       } catch (error) {
-        alert(`Error al agregar item: ${error.message}`);
+        mostrarModal('Error', `Error al agregar ingrediente: ${error.message}`, 'error');
       } finally {
         setLoading(false);
       }
@@ -34,34 +44,42 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
         item.id === id ? { ...item, cantidad: parseFloat(nuevaCantidad) } : item
       ));
     } catch (error) {
-      alert(`Error al actualizar cantidad: ${error.message}`);
+      mostrarModal('Error', `Error al actualizar cantidad: ${error.message}`, 'error');
       // Recargar para sincronizar
       reloadStock();
     }
   };
 
   const eliminarItem = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar este item?')) return;
+    if (!confirm('¿Estás seguro de eliminar este ingrediente?')) return;
     
     try {
       await stockAPI.delete(id);
       setStockItems(stockItems.filter(item => item.id !== id));
-      alert('Item eliminado correctamente');
+      mostrarModal('¡Éxito!', 'Ingrediente eliminado correctamente', 'success');
     } catch (error) {
-      alert(`Error al eliminar item: ${error.message}`);
+      mostrarModal('Error', `Error al eliminar ingrediente: ${error.message}`, 'error');
     }
   };
 
   return (
     <div className="stock-container">
-      <h2>Gestión de Stock</h2>
+      <Modal 
+        isOpen={modal.isOpen}
+        onClose={cerrarModal}
+        titulo={modal.titulo}
+        mensaje={modal.mensaje}
+        tipo={modal.tipo}
+      />
+      
+      <h2>Gestión de Ingredientes</h2>
       
       <form className="stock-form" onSubmit={agregarItem}>
-        <h3>Agregar nuevo item:</h3>
+        <h3>Agregar nuevo ingrediente:</h3>
         <div className="form-group">
           <input
             type="text"
-            placeholder="Nombre del item"
+            placeholder="Nombre del ingrediente"
             value={nuevoItem.nombre}
             onChange={(e) => setNuevoItem({ ...nuevoItem, nombre: e.target.value })}
             disabled={loading}
@@ -92,7 +110,7 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
       <div className="stock-list">
         <h3>Inventario actual:</h3>
         {stockItems.length === 0 ? (
-          <p className="empty-message">No hay items en el stock. Agrega algunos para comenzar.</p>
+          <p className="empty-message">No hay ingredientes en el inventario. Agrega algunos para comenzar.</p>
         ) : (
           <table>
             <thead>

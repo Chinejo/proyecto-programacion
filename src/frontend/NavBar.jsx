@@ -11,7 +11,7 @@ function Navbar({ currentView, setCurrentView }) {
           className={`nav-button ${currentView === 'stock' ? 'active' : ''}`}
           onClick={() => setCurrentView('stock')}
         >
-          Stock
+          Ingredientes
         </button>
         <button 
           className={`nav-button ${currentView === 'productos' ? 'active' : ''}`}

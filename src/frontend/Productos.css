@@ -23,6 +23,11 @@
   margin-top: 0;
   color: #8B4513;
   margin-bottom: 1.5rem;
+  transition: color 0.2s;
+}
+
+.productos-form h3:hover {
+  color: #D2691E;
 }
 
 .productos-form h4 {
