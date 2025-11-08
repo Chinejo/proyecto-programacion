@@ -57,7 +57,7 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
       <h2>Gestión de Stock</h2>
       
       <form className="stock-form" onSubmit={agregarItem}>
-        <h3>Agregar Nuevo Item</h3>
+        <h3>Agregar nuevo item:</h3>
         <div className="form-group">
           <input
             type="text"
@@ -90,7 +90,7 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
       </form>
 
       <div className="stock-list">
-        <h3>Inventario Actual</h3>
+        <h3>Inventario actual:</h3>
         {stockItems.length === 0 ? (
           <p className="empty-message">No hay items en el stock. Agrega algunos para comenzar.</p>
         ) : (

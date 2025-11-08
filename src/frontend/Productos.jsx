@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './Productos.css';
 import { productosAPI, recetasAPI } from '../services/api';
+import Modal from './Modal';
 
 function Productos({ stockItems, setStockItems, reloadStock }) {
   const [productos, setProductos] = useState([]);
@@ -9,11 +10,20 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
   const [editando, setEditando] = useState(null);
   const [mostrarReceta, setMostrarReceta] = useState(null);
   const [ingredienteReceta, setIngredienteReceta] = useState({ ingrediente: '', cantidad: '', unidad: 'kg' });
+  const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
 
   // Cargar productos desde la API al montar
   useEffect(() => {
     loadProductos();
   }, []);
+
+  const mostrarModal = (titulo, mensaje, tipo = 'info') => {
+    setModal({ isOpen: true, titulo, mensaje, tipo });
+  };
+
+  const cerrarModal = () => {
+    setModal({ ...modal, isOpen: false });
+  };
 
   const loadProductos = async () => {
     try {
@@ -21,7 +31,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       const data = await productosAPI.getAll();
       setProductos(data);
     } catch (error) {
-      alert(`Error al cargar productos: ${error.message}`);
+      mostrarModal('Error', `Error al cargar productos: ${error.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -39,9 +49,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         });
         setProductos([...productos, producto]);
         setNuevoProducto({ nombre: '', precio: '', stock: '' });
-        alert('Producto agregado correctamente');
+        mostrarModal('¡Éxito!', 'Producto agregado correctamente', 'success');
       } catch (error) {
-        alert(`Error al agregar producto: ${error.message}`);
+        mostrarModal('Error', `Error al agregar producto: ${error.message}`, 'error');
       }
     }
   };
@@ -56,7 +66,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         return p;
       }));
     } catch (error) {
-      alert(`Error al cambiar tipo de receta: ${error.message}`);
+      mostrarModal('Error', `Error al cambiar tipo de receta: ${error.message}`, 'error');
     }
   };
 
@@ -73,21 +83,21 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       await reloadStock();
       
       const unidadTexto = productoActualizado.tipo_receta === 'kg' ? `${cantidad} kg` : `${cantidad} unidades`;
-      alert(`Se prepararon ${unidadTexto} de ${productoActualizado.nombre}`);
+      mostrarModal('¡Éxito!', `Se prepararon ${unidadTexto} de ${productoActualizado.nombre}`, 'success');
     } catch (error) {
-      alert(`Error al preparar receta: ${error.message}`);
+      mostrarModal('Error', `Error al preparar receta: ${error.message}`, 'error');
     }
   };
 
   const agregarIngredienteReceta = async (productoId) => {
     if (!ingredienteReceta.ingrediente || !ingredienteReceta.cantidad) {
-      alert('Completa todos los campos del ingrediente');
+      mostrarModal('Campos incompletos', 'Completa todos los campos del ingrediente', 'warning');
       return;
     }
 
     const stockItem = stockItems.find(s => s.nombre === ingredienteReceta.ingrediente);
     if (!stockItem) {
-      alert(`El ingrediente "${ingredienteReceta.ingrediente}" no existe en el stock`);
+      mostrarModal('Error', `El ingrediente "${ingredienteReceta.ingrediente}" no existe en el stock`, 'error');
       return;
     }
 
@@ -111,9 +121,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       }));
 
       setIngredienteReceta({ ingrediente: '', cantidad: '', unidad: 'kg' });
-      alert('Ingrediente agregado correctamente');
+      mostrarModal('¡Éxito!', 'Ingrediente agregado correctamente', 'success');
     } catch (error) {
-      alert(`Error al agregar ingrediente: ${error.message}`);
+      mostrarModal('Error', `Error al agregar ingrediente: ${error.message}`, 'error');
     }
   };
 
@@ -134,9 +144,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         return p;
       }));
 
-      alert('Ingrediente eliminado correctamente');
+      mostrarModal('¡Éxito!', 'Ingrediente eliminado correctamente', 'success');
     } catch (error) {
-      alert(`Error al eliminar ingrediente: ${error.message}`);
+      mostrarModal('Error', `Error al eliminar ingrediente: ${error.message}`, 'error');
     }
   };
 
@@ -149,7 +159,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
 
   const guardarEdicion = async () => {
     if (!editando.nombre || !editando.nombre.trim()) {
-      alert('El nombre no puede estar vacío');
+      mostrarModal('Campo requerido', 'El nombre no puede estar vacío', 'warning');
       return;
     }
 
@@ -163,9 +173,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
 
       await loadProductos();
       setEditando(null);
-      alert('Producto actualizado correctamente');
+      mostrarModal('¡Éxito!', 'Producto actualizado correctamente', 'success');
     } catch (error) {
-      alert(`Error al actualizar producto: ${error.message}`);
+      mostrarModal('Error', `Error al actualizar producto: ${error.message}`, 'error');
     }
   };
 
@@ -179,18 +189,26 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
     try {
       await productosAPI.delete(id);
       await loadProductos();
-      alert('Producto eliminado correctamente');
+      mostrarModal('¡Éxito!', 'Producto eliminado correctamente', 'success');
     } catch (error) {
-      alert(`Error al eliminar producto: ${error.message}`);
+      mostrarModal('Error', `Error al eliminar producto: ${error.message}`, 'error');
     }
   };
 
   return (
     <div className="productos-container">
+      <Modal 
+        isOpen={modal.isOpen}
+        onClose={cerrarModal}
+        titulo={modal.titulo}
+        mensaje={modal.mensaje}
+        tipo={modal.tipo}
+      />
+      
       <h2>Gestión de Productos</h2>
       
       <form className="productos-form" onSubmit={agregarProducto}>
-        <h3>Agregar Nuevo Producto</h3>
+        <h3>Agregar nuevo producto:</h3>
         <div className="form-group">
           <input
             type="text"
@@ -216,7 +234,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       </form>
 
       <div className="productos-list">
-        <h3>Lista de Productos</h3>
+        <h3>Lista de productos:</h3>
         {loading ? (
           <p>Cargando productos...</p>
         ) : productos.length === 0 ? (

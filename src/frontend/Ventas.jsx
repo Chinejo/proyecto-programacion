@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './Ventas.css';
 import { productosAPI, ventasAPI } from '../services/api';
+import Modal from './Modal';
 
 function Ventas() {
   const [productosDisponibles, setProductosDisponibles] = useState([]);
@@ -9,11 +10,20 @@ function Ventas() {
   const [productoSeleccionado, setProductoSeleccionado] = useState('');
   const [cantidad, setCantidad] = useState(1);
   const [ventas, setVentas] = useState([]);
+  const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
 
   // Cargar productos y ventas al montar
   useEffect(() => {
     loadData();
   }, []);
+
+  const mostrarModal = (titulo, mensaje, tipo = 'info') => {
+    setModal({ isOpen: true, titulo, mensaje, tipo });
+  };
+
+  const cerrarModal = () => {
+    setModal({ ...modal, isOpen: false });
+  };
 
   const loadData = async () => {
     try {
@@ -25,7 +35,7 @@ function Ventas() {
       setProductosDisponibles(productosData);
       setVentas(ventasData);
     } catch (error) {
-      alert(`Error al cargar datos: ${error.message}`);
+      mostrarModal('Error', `Error al cargar datos: ${error.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -38,7 +48,7 @@ function Ventas() {
     const cantidadNum = parseInt(cantidad);
 
     if (cantidadNum > producto.stock) {
-      alert('No hay suficiente stock disponible');
+      mostrarModal('Stock insuficiente', 'No hay suficiente stock disponible', 'warning');
       return;
     }
 
@@ -61,7 +71,7 @@ function Ventas() {
   const modificarCantidad = (productoId, nuevaCantidad) => {
     const producto = productosDisponibles.find(p => p.id === productoId);
     if (nuevaCantidad > producto.stock) {
-      alert('No hay suficiente stock disponible');
+      mostrarModal('Stock insuficiente', 'No hay suficiente stock disponible', 'warning');
       return;
     }
     
@@ -84,7 +94,7 @@ function Ventas() {
 
   const finalizarVenta = async () => {
     if (ventaActual.length === 0) {
-      alert('Agregue productos a la venta');
+      mostrarModal('Venta vacía', 'Agregue productos a la venta', 'warning');
       return;
     }
 
@@ -97,12 +107,11 @@ function Ventas() {
 
       await ventasAPI.create({ items });
       
-      // Recargar datos
       await loadData();
       setVentaActual([]);
-      alert('Venta registrada exitosamente!');
+      mostrarModal('¡Éxito!', 'Venta registrada exitosamente', 'success');
     } catch (error) {
-      alert(`Error al registrar venta: ${error.message}`);
+      mostrarModal('Error', `Error al registrar venta: ${error.message}`, 'error');
     }
   };
 
@@ -112,6 +121,14 @@ function Ventas() {
 
   return (
     <div className="ventas-container">
+      <Modal 
+        isOpen={modal.isOpen}
+        onClose={cerrarModal}
+        titulo={modal.titulo}
+        mensaje={modal.mensaje}
+        tipo={modal.tipo}
+      />
+      
       <h2>Registrar Venta</h2>
       
       {loading ? (
@@ -119,7 +136,7 @@ function Ventas() {
       ) : (
         <>
       <div className="venta-form">
-        <h3>Nueva Venta</h3>
+        <h3>Nueva venta:</h3>
         <div className="form-group">
           <select 
             value={productoSeleccionado}
@@ -145,7 +162,7 @@ function Ventas() {
 
       {ventaActual.length > 0 && (
         <div className="venta-actual">
-          <h3>Productos en la Venta</h3>
+          <h3>Productos en la venta:</h3>
           <table>
             <thead>
               <tr>
@@ -196,7 +213,7 @@ function Ventas() {
 
       {ventas.length > 0 && (
         <div className="historial-ventas">
-          <h3>Historial de Ventas</h3>
+          <h3>Historial de ventas:</h3>
           {ventas.map(venta => (
             <div key={venta.id} className="venta-card">
               <div className="venta-header">
