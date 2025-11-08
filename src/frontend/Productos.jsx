@@ -6,7 +6,14 @@ import Modal from './Modal';
 function Productos({ stockItems, setStockItems, reloadStock }) {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [nuevoProducto, setNuevoProducto] = useState({ nombre: '', precio: '', stock: '' });
+  const [nuevoProducto, setNuevoProducto] = useState({ 
+    nombre: '', 
+    precio: '', 
+    unidades: '0', 
+    peso_kg: '0',
+    unidades_por_receta: '1',
+    peso_por_receta: '1'
+  });
   const [editando, setEditando] = useState(null);
   const [mostrarReceta, setMostrarReceta] = useState(null);
   const [ingredienteReceta, setIngredienteReceta] = useState({ ingrediente: '', cantidad: '', unidad: 'kg' });
@@ -39,34 +46,29 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
 
   const agregarProducto = async (e) => {
     e.preventDefault();
-    if (nuevoProducto.nombre && nuevoProducto.precio && nuevoProducto.stock) {
+    if (nuevoProducto.nombre && nuevoProducto.precio && nuevoProducto.unidades_por_receta && nuevoProducto.peso_por_receta) {
       try {
         const producto = await productosAPI.create({
           nombre: nuevoProducto.nombre,
           precio: parseFloat(nuevoProducto.precio),
-          stock: parseFloat(nuevoProducto.stock),
-          tipo_receta: 'unidad' // Por defecto: receta por unidad
+          unidades: parseFloat(nuevoProducto.unidades || 0),
+          peso_kg: parseFloat(nuevoProducto.peso_kg || 0),
+          unidades_por_receta: parseFloat(nuevoProducto.unidades_por_receta),
+          peso_por_receta: parseFloat(nuevoProducto.peso_por_receta)
         });
         setProductos([...productos, producto]);
-        setNuevoProducto({ nombre: '', precio: '', stock: '' });
+        setNuevoProducto({ 
+          nombre: '', 
+          precio: '', 
+          unidades: '0', 
+          peso_kg: '0',
+          unidades_por_receta: '1',
+          peso_por_receta: '1'
+        });
         mostrarModal('¡Éxito!', 'Producto agregado correctamente', 'success');
       } catch (error) {
         mostrarModal('Error', `Error al agregar producto: ${error.message}`, 'error');
       }
-    }
-  };
-
-  const cambiarTipoReceta = async (productoId, nuevoTipo) => {
-    try {
-      await productosAPI.update(productoId, { tipo_receta: nuevoTipo });
-      setProductos(productos.map(p => {
-        if (p.id === productoId) {
-          return { ...p, tipo_receta: nuevoTipo };
-        }
-        return p;
-      }));
-    } catch (error) {
-      mostrarModal('Error', `Error al cambiar tipo de receta: ${error.message}`, 'error');
     }
   };
 
@@ -82,8 +84,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       // Recargar el stock para reflejar los cambios
       await reloadStock();
       
-      const unidadTexto = productoActualizado.tipo_receta === 'kg' ? `${cantidad} kg` : `${cantidad} unidades`;
-      mostrarModal('¡Éxito!', `Se prepararon ${unidadTexto} de ${productoActualizado.nombre}`, 'success');
+      const unidadesProducidas = productoActualizado.unidades_por_receta * cantidad;
+      const pesoProducido = productoActualizado.peso_por_receta * cantidad;
+      mostrarModal('¡Éxito!', `Se prepararon ${cantidad} receta(s) de ${productoActualizado.nombre}. Producido: ${unidadesProducidas} unidades (${pesoProducido} kg)`, 'success');
     } catch (error) {
       mostrarModal('Error', `Error al preparar receta: ${error.message}`, 'error');
     }
@@ -152,8 +155,7 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
 
   const iniciarEdicion = (producto) => {
     setEditando({
-      ...producto,
-      tipo_receta: producto.tipo_receta || 'unidad'
+      ...producto
     });
   };
 
@@ -167,8 +169,10 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       await productosAPI.update(editando.id, {
         nombre: editando.nombre,
         precio: parseFloat(editando.precio),
-        stock: parseInt(editando.stock),
-        tipo_receta: editando.tipo_receta
+        unidades: parseFloat(editando.unidades),
+        peso_kg: parseFloat(editando.peso_kg),
+        unidades_por_receta: parseFloat(editando.unidades_por_receta),
+        peso_por_receta: parseFloat(editando.peso_por_receta)
       });
 
       await loadProductos();
@@ -209,28 +213,93 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
       
       <form className="productos-form" onSubmit={agregarProducto}>
         <h3>Agregar nuevo producto:</h3>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Nombre del producto"
-            value={nuevoProducto.nombre}
-            onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })}
-          />
-          <input
-            type="number"
-            placeholder="Precio"
-            step="0.01"
-            value={nuevoProducto.precio}
-            onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: e.target.value })}
-          />
-          <input
-            type="number"
-            placeholder="Stock inicial"
-            value={nuevoProducto.stock}
-            onChange={(e) => setNuevoProducto({ ...nuevoProducto, stock: e.target.value })}
-          />
-          <button type="submit">Agregar Producto</button>
+        
+        <div className="form-row">
+          <div className="form-field">
+            <label>Nombre del producto *</label>
+            <input
+              type="text"
+              placeholder="Ej: Pan Francés, Torta de Chocolate..."
+              value={nuevoProducto.nombre}
+              onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })}
+              required
+            />
+          </div>
+          <div className="form-field">
+            <label>Precio ($) *</label>
+            <input
+              type="number"
+              placeholder="Ej: 1600"
+              step="0.01"
+              value={nuevoProducto.precio}
+              onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: e.target.value })}
+              required
+            />
+            <small>Precio de referencia del producto</small>
+          </div>
         </div>
+
+        <div className="form-section">
+          <h4>📦 Stock Inicial (opcional - normalmente 0)</h4>
+          <div className="form-row">
+            <div className="form-field">
+              <label>Unidades en stock</label>
+              <input
+                type="number"
+                placeholder="0"
+                step="0.01"
+                value={nuevoProducto.unidades}
+                onChange={(e) => setNuevoProducto({ ...nuevoProducto, unidades: e.target.value })}
+              />
+            </div>
+            <div className="form-field">
+              <label>Peso en stock (kg)</label>
+              <input
+                type="number"
+                placeholder="0"
+                step="0.01"
+                value={nuevoProducto.peso_kg}
+                onChange={(e) => setNuevoProducto({ ...nuevoProducto, peso_kg: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h4>🔧 Configuración de Receta *</h4>
+          <p className="form-help">
+            Define cuántas unidades y cuánto peso produce una preparación de la receta.
+            Ejemplo: 1 receta de pan produce 8 rodajas que pesan 1 kg en total.
+          </p>
+          <div className="form-row">
+            <div className="form-field">
+              <label>Unidades por receta *</label>
+              <input
+                type="number"
+                placeholder="Ej: 8"
+                step="0.01"
+                value={nuevoProducto.unidades_por_receta}
+                onChange={(e) => setNuevoProducto({ ...nuevoProducto, unidades_por_receta: e.target.value })}
+                required
+              />
+              <small>¿Cuántas unidades produce?</small>
+            </div>
+            <div className="form-field">
+              <label>Peso por receta (kg) *</label>
+              <input
+                type="number"
+                placeholder="Ej: 1"
+                step="0.01"
+                value={nuevoProducto.peso_por_receta}
+                onChange={(e) => setNuevoProducto({ ...nuevoProducto, peso_por_receta: e.target.value })}
+                required
+              />
+              <small>¿Cuántos kg produce en total?</small>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" className="btn-agregar-producto">Agregar Producto</button>
       </form>
 
       <div className="productos-list">
@@ -245,7 +314,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
             <tr>
               <th>Nombre</th>
               <th>Precio</th>
-              <th>Stock</th>
+              <th>Stock (unidades)</th>
+              <th>Stock (kg)</th>
+              <th>Receta (u/kg)</th>
               <th>Receta</th>
               <th>Acciones</th>
             </tr>
@@ -267,14 +338,42 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                         type="number"
                         step="0.01"
                         value={editando.precio}
-                        onChange={(e) => setEditando({ ...editando, precio: parseFloat(e.target.value) })}
+                        onChange={(e) => setEditando({ ...editando, precio: e.target.value })}
                       />
                     </td>
                     <td>
                       <input
                         type="number"
-                        value={editando.stock}
-                        onChange={(e) => setEditando({ ...editando, stock: parseInt(e.target.value) })}
+                        step="0.01"
+                        value={editando.unidades}
+                        onChange={(e) => setEditando({ ...editando, unidades: e.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editando.peso_kg}
+                        onChange={(e) => setEditando({ ...editando, peso_kg: e.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editando.unidades_por_receta}
+                        onChange={(e) => setEditando({ ...editando, unidades_por_receta: e.target.value })}
+                        title="Unidades por receta"
+                        style={{width: '60px'}}
+                      />
+                      /
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editando.peso_por_receta}
+                        onChange={(e) => setEditando({ ...editando, peso_por_receta: e.target.value })}
+                        title="Kg por receta"
+                        style={{width: '60px'}}
                       />
                     </td>
                     <td>-</td>
@@ -287,7 +386,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                   <>
                     <td>{producto.nombre}</td>
                     <td>${producto.precio}</td>
-                    <td>{producto.stock}</td>
+                    <td>{producto.unidades?.toFixed(2) || 0}</td>
+                    <td>{producto.peso_kg?.toFixed(2) || 0} kg</td>
+                    <td>{producto.unidades_por_receta?.toFixed(1) || 1}u / {producto.peso_por_receta?.toFixed(2) || 1}kg</td>
                     <td>
                       {producto.receta && producto.receta.length > 0 ? (
                         <span className="receta-info">✓ {producto.receta.length} ingredientes</span>
@@ -319,36 +420,20 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                 <>
                   <h3>Receta de {producto.nombre}</h3>
                   
-                  <div className="tipo-receta-selector">
-                    <label>Tipo de Receta:</label>
-                    <div className="radio-group">
-                      <label className="radio-label">
-                        <input
-                          type="radio"
-                          name={`tipo-receta-${producto.id}`}
-                          value="unidad"
-                          checked={producto.tipo_receta === 'unidad'}
-                          onChange={(e) => cambiarTipoReceta(producto.id, e.target.value)}
-                        />
-                        <span>Por Unidad</span>
-                        <small>(Ej: pasteles, medialunas - cada unidad usa X ingredientes)</small>
-                      </label>
-                      <label className="radio-label">
-                        <input
-                          type="radio"
-                          name={`tipo-receta-${producto.id}`}
-                          value="kg"
-                          checked={producto.tipo_receta === 'kg'}
-                          onChange={(e) => cambiarTipoReceta(producto.id, e.target.value)}
-                        />
-                        <span>Por Kilogramo</span>
-                        <small>(Ej: pan francés - se fabrica por kg, ingredientes para producir 1kg)</small>
-                      </label>
+                  <div className="tipo-receta-info">
+                    <div className="info-receta">
+                      <label>Producción por receta:</label>
+                      <p><strong>{producto.unidades_por_receta} unidades</strong> = <strong>{producto.peso_por_receta} kg</strong></p>
+                      <small>({(producto.peso_por_receta / producto.unidades_por_receta * 1000).toFixed(0)}g por unidad)</small>
+                    </div>
+                    <div className="info-stock">
+                      <label>Stock actual:</label>
+                      <p><strong>{producto.unidades?.toFixed(2)} unidades</strong> ({producto.peso_kg?.toFixed(2)} kg)</p>
                     </div>
                   </div>
                   
                   <div className="receta-actual">
-                    <h4>Ingredientes (por {producto.tipo_receta === 'kg' ? 'kilogramo' : 'unidad'})</h4>
+                    <h4>Ingredientes por preparación</h4>
                     {producto.receta && producto.receta.length > 0 ? (
                       <ul className="ingredientes-lista">
                         {producto.receta.map((ing, index) => (
@@ -404,20 +489,19 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                   <div className="preparar-receta">
                     <h4>Preparar Producto</h4>
                     <p>
-                      {producto.tipo_receta === 'kg' 
-                        ? 'Ingresa cuántos kilogramos deseas preparar. Los ingredientes se descontarán proporcionalmente.' 
-                        : 'Ingresa cuántas unidades deseas preparar. Los ingredientes se descontarán por cada unidad.'}
+                      Ingresa cuántas veces deseas preparar esta receta. 
+                      Cada preparación produce <strong>{producto.unidades_por_receta} unidades</strong> ({producto.peso_por_receta} kg).
                     </p>
                     <div className="form-group-preparar">
                       <input
                         type="number"
                         min="0.01"
-                        step={producto.tipo_receta === 'kg' ? '0.1' : '1'}
-                        defaultValue={producto.tipo_receta === 'kg' ? '1' : '1'}
+                        step="0.01"
+                        defaultValue="1"
                         id={`cantidad-preparar-${producto.id}`}
-                        placeholder={producto.tipo_receta === 'kg' ? 'Kilos a preparar' : 'Unidades a preparar'}
+                        placeholder="Cantidad de preparaciones"
                       />
-                      <span className="unidad-label">{producto.tipo_receta === 'kg' ? 'kg' : 'unidades'}</span>
+                      <span className="unidad-label">preparación(es)</span>
                       <button 
                         className="btn-preparar"
                         onClick={() => {

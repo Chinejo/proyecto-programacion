@@ -173,7 +173,11 @@ def delete_ingrediente_receta(producto_id: int, ingrediente_id: int, db: Session
 
 @app.post("/api/productos/{producto_id}/preparar", response_model=schemas.ProductoResponse, tags=["Recetas"])
 def preparar_receta(producto_id: int, preparar: schemas.PrepararRecetaRequest, db: Session = Depends(get_db)):
-    """Preparar una receta (descontar ingredientes del stock y aumentar stock del producto)"""
+    """Preparar una receta (descontar ingredientes del stock y aumentar stock del producto)
+    
+    Al preparar una receta, se producen exactamente las unidades y el peso definidos en la receta,
+    multiplicados por la cantidad de veces que se prepara.
+    """
     # Obtener el producto
     producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
     if not producto:
@@ -202,8 +206,12 @@ def preparar_receta(producto_id: int, preparar: schemas.PrepararRecetaRequest, d
         cantidad_a_descontar = ingrediente.cantidad * preparar.cantidad
         stock_item.cantidad -= cantidad_a_descontar
     
-    # Aumentar stock del producto
-    producto.stock += preparar.cantidad
+    # Aumentar stock del producto (unidades y peso según la receta)
+    unidades_producidas = producto.unidades_por_receta * preparar.cantidad
+    peso_producido = producto.peso_por_receta * preparar.cantidad
+    
+    producto.unidades += unidades_producidas
+    producto.peso_kg += peso_producido
     
     db.commit()
     db.refresh(producto)
@@ -226,7 +234,12 @@ def get_venta(venta_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/ventas", response_model=schemas.VentaResponse, status_code=status.HTTP_201_CREATED, tags=["Ventas"])
 def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db)):
-    """Crear una nueva venta"""
+    """Crear una nueva venta
+    
+    Soporta venta por unidad o por peso. La relación peso-unidad se calcula desde la receta.
+    - Venta por UNIDAD: descuenta unidades y calcula peso proporcional
+    - Venta por PESO: descuenta peso y calcula unidades proporcionales
+    """
     if not venta.items or len(venta.items) == 0:
         raise HTTPException(status_code=400, detail="La venta debe tener al menos un item")
     
@@ -239,20 +252,54 @@ def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db)):
         if not producto:
             raise HTTPException(status_code=404, detail=f"Producto con id {item.producto_id} no encontrado")
         
-        if producto.stock < item.cantidad:
-            raise HTTPException(
-                status_code=400,
-                detail=f"No hay suficiente stock de {producto.nombre}. Disponible: {producto.stock}, solicitado: {item.cantidad}"
-            )
+        # Calcular kg por unidad desde la receta
+        kg_por_unidad = producto.peso_por_receta / producto.unidades_por_receta if producto.unidades_por_receta > 0 else 0
         
-        subtotal = producto.precio * item.cantidad
+        # Determinar qué se vende y calcular descuentos
+        if item.tipo_venta == schemas.TipoVenta.UNIDAD:
+            # Venta por unidad
+            unidades_a_descontar = item.cantidad
+            peso_a_descontar = item.cantidad * kg_por_unidad
+            
+            # Verificar stock de unidades
+            if producto.unidades < unidades_a_descontar:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No hay suficiente stock de {producto.nombre}. Disponible: {producto.unidades} unidades, solicitado: {unidades_a_descontar}"
+                )
+            
+            # Calcular precio (por unidad)
+            precio_unitario = producto.precio
+            subtotal = precio_unitario * item.cantidad
+            
+        else:  # PESO
+            # Venta por peso (kg)
+            peso_a_descontar = item.cantidad_peso_kg if item.cantidad_peso_kg else item.cantidad
+            unidades_a_descontar = peso_a_descontar / kg_por_unidad if kg_por_unidad > 0 else 0
+            
+            # Verificar stock de peso
+            if producto.peso_kg < peso_a_descontar:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No hay suficiente stock de {producto.nombre}. Disponible: {producto.peso_kg} kg, solicitado: {peso_a_descontar} kg"
+                )
+            
+            # Calcular precio proporcional al peso
+            precio_por_kg = producto.precio / kg_por_unidad if kg_por_unidad > 0 else producto.precio
+            subtotal = precio_por_kg * peso_a_descontar
+        
         total += subtotal
         
         items_data.append({
+            "producto": producto,
             "producto_id": producto.id,
             "producto_nombre": producto.nombre,
             "producto_precio": producto.precio,
-            "cantidad": item.cantidad
+            "cantidad": item.cantidad,
+            "tipo_venta": item.tipo_venta,
+            "cantidad_peso_kg": item.cantidad_peso_kg,
+            "unidades_a_descontar": unidades_a_descontar,
+            "peso_a_descontar": peso_a_descontar
         })
     
     # Crear la venta
@@ -267,13 +314,19 @@ def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db)):
     for item_data in items_data:
         db_item = models.ItemVenta(
             venta_id=db_venta.id,
-            **item_data
+            producto_id=item_data["producto_id"],
+            producto_nombre=item_data["producto_nombre"],
+            producto_precio=item_data["producto_precio"],
+            cantidad=item_data["cantidad"],
+            tipo_venta=item_data["tipo_venta"],
+            cantidad_peso_kg=item_data["cantidad_peso_kg"]
         )
         db.add(db_item)
         
-        # Descontar del stock del producto
-        producto = db.query(models.Producto).filter(models.Producto.id == item_data["producto_id"]).first()
-        producto.stock -= item_data["cantidad"]
+        # Descontar del stock del producto (unidades y peso)
+        producto = item_data["producto"]
+        producto.unidades -= item_data["unidades_a_descontar"]
+        producto.peso_kg -= item_data["peso_a_descontar"]
     
     db.commit()
     db.refresh(db_venta)
@@ -304,9 +357,17 @@ def init_database(db: Session = Depends(get_db)):
     db.commit()
     
     # Crear productos con recetas
+    # Formato: nombre, precio, stock inicial (unidades), stock inicial (kg), unidades_por_receta, peso_por_receta
     productos_data = [
         {
-            "producto": models.Producto(nombre="Pan Francés", precio=150, stock=50, tipo_receta=models.TipoRecetaEnum.KG),
+            "producto": models.Producto(
+                nombre="Pan Francés", 
+                precio=1600,  # Precio por kg
+                unidades=50,  # 50 panes en stock
+                peso_kg=6.25,  # 6.25 kg en stock
+                unidades_por_receta=8,  # 1 receta produce 8 panes
+                peso_por_receta=1.0  # 1 receta produce 1 kg total
+            ),
             "receta": [
                 {"ingrediente": "Harina", "cantidad": 0.5, "unidad": "kg"},
                 {"ingrediente": "Levadura", "cantidad": 0.02, "unidad": "kg"},
@@ -314,25 +375,46 @@ def init_database(db: Session = Depends(get_db)):
             ]
         },
         {
-            "producto": models.Producto(nombre="Medialunas", precio=80, stock=100, tipo_receta=models.TipoRecetaEnum.UNIDAD),
+            "producto": models.Producto(
+                nombre="Medialunas", 
+                precio=80,  # Precio por unidad
+                unidades=100,  # 100 medialunas en stock
+                peso_kg=2.0,  # 2 kg en stock
+                unidades_por_receta=12,  # 1 receta produce 12 medialunas
+                peso_por_receta=0.24  # 1 receta produce 0.24 kg total (20g cada una)
+            ),
             "receta": [
-                {"ingrediente": "Harina", "cantidad": 0.03, "unidad": "kg"},
-                {"ingrediente": "Azúcar", "cantidad": 0.01, "unidad": "kg"},
-                {"ingrediente": "Levadura", "cantidad": 0.001, "unidad": "kg"},
-                {"ingrediente": "Manteca", "cantidad": 0.005, "unidad": "kg"}
+                {"ingrediente": "Harina", "cantidad": 0.15, "unidad": "kg"},
+                {"ingrediente": "Azúcar", "cantidad": 0.05, "unidad": "kg"},
+                {"ingrediente": "Levadura", "cantidad": 0.01, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.03, "unidad": "kg"}
             ]
         },
         {
-            "producto": models.Producto(nombre="Facturas", precio=100, stock=75, tipo_receta=models.TipoRecetaEnum.UNIDAD),
+            "producto": models.Producto(
+                nombre="Facturas", 
+                precio=100,  # Precio por unidad
+                unidades=75,  # 75 facturas en stock
+                peso_kg=2.25,  # 2.25 kg en stock
+                unidades_por_receta=10,  # 1 receta produce 10 facturas
+                peso_por_receta=0.3  # 1 receta produce 0.3 kg total (30g cada una)
+            ),
             "receta": [
-                {"ingrediente": "Harina", "cantidad": 0.04, "unidad": "kg"},
-                {"ingrediente": "Azúcar", "cantidad": 0.015, "unidad": "kg"},
-                {"ingrediente": "Manteca", "cantidad": 0.01, "unidad": "kg"},
-                {"ingrediente": "Leche", "cantidad": 0.02, "unidad": "L"}
+                {"ingrediente": "Harina", "cantidad": 0.18, "unidad": "kg"},
+                {"ingrediente": "Azúcar", "cantidad": 0.06, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.04, "unidad": "kg"},
+                {"ingrediente": "Leche", "cantidad": 0.05, "unidad": "L"}
             ]
         },
         {
-            "producto": models.Producto(nombre="Torta de Chocolate", precio=500, stock=5, tipo_receta=models.TipoRecetaEnum.UNIDAD),
+            "producto": models.Producto(
+                nombre="Torta de Chocolate", 
+                precio=5000,  # Precio por unidad (torta entera)
+                unidades=5,  # 5 tortas en stock
+                peso_kg=7.5,  # 7.5 kg en stock
+                unidades_por_receta=1,  # 1 receta produce 1 torta
+                peso_por_receta=1.5  # 1 receta produce 1.5 kg
+            ),
             "receta": [
                 {"ingrediente": "Harina", "cantidad": 0.5, "unidad": "kg"},
                 {"ingrediente": "Azúcar", "cantidad": 0.4, "unidad": "kg"},
@@ -341,12 +423,19 @@ def init_database(db: Session = Depends(get_db)):
             ]
         },
         {
-            "producto": models.Producto(nombre="Croissants", precio=120, stock=30, tipo_receta=models.TipoRecetaEnum.UNIDAD),
+            "producto": models.Producto(
+                nombre="Croissants", 
+                precio=120,  # Precio por unidad
+                unidades=30,  # 30 croissants en stock
+                peso_kg=2.1,  # 2.1 kg en stock
+                unidades_por_receta=6,  # 1 receta produce 6 croissants
+                peso_por_receta=0.42  # 1 receta produce 0.42 kg total (70g cada uno)
+            ),
             "receta": [
-                {"ingrediente": "Harina", "cantidad": 0.08, "unidad": "kg"},
-                {"ingrediente": "Manteca", "cantidad": 0.04, "unidad": "kg"},
-                {"ingrediente": "Leche", "cantidad": 0.03, "unidad": "L"},
-                {"ingrediente": "Levadura", "cantidad": 0.002, "unidad": "kg"}
+                {"ingrediente": "Harina", "cantidad": 0.25, "unidad": "kg"},
+                {"ingrediente": "Manteca", "cantidad": 0.1, "unidad": "kg"},
+                {"ingrediente": "Leche", "cantidad": 0.05, "unidad": "L"},
+                {"ingrediente": "Levadura", "cantidad": 0.01, "unidad": "kg"}
             ]
         }
     ]

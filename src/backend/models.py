@@ -3,9 +3,9 @@ from sqlalchemy.orm import relationship
 from src.backend.database import Base
 import enum
 
-class TipoRecetaEnum(str, enum.Enum):
+class TipoVentaEnum(str, enum.Enum):
     UNIDAD = "unidad"
-    KG = "kg"
+    PESO = "peso"
 
 class Stock(Base):
     __tablename__ = "stock"
@@ -21,8 +21,14 @@ class Producto(Base):
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, index=True, nullable=False)
     precio = Column(Float, nullable=False)
-    stock = Column(Float, nullable=False)
-    tipo_receta = Column(Enum(TipoRecetaEnum), default=TipoRecetaEnum.UNIDAD, nullable=False)
+    
+    # Stock actual
+    unidades = Column(Float, nullable=False, default=0.0)  # Unidades disponibles
+    peso_kg = Column(Float, nullable=False, default=0.0)  # Peso total en kg disponible
+    
+    # Configuración de receta (relación peso-unidad)
+    unidades_por_receta = Column(Float, nullable=False, default=1.0)  # Unidades que produce la receta
+    peso_por_receta = Column(Float, nullable=False, default=1.0)  # Peso total en kg que produce la receta
     
     # Relaciones
     receta = relationship("IngredienteReceta", back_populates="producto", cascade="all, delete-orphan")
@@ -58,7 +64,9 @@ class ItemVenta(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
     producto_nombre = Column(String, nullable=False)  # Para mantener historial
     producto_precio = Column(Float, nullable=False)  # Precio al momento de la venta
-    cantidad = Column(Integer, nullable=False)
+    cantidad = Column(Float, nullable=False)  # Cantidad vendida (puede ser fracción)
+    tipo_venta = Column(Enum(TipoVentaEnum), nullable=False)  # Si se vendió por unidad o peso
+    cantidad_peso_kg = Column(Float, nullable=True)  # Peso vendido si tipo_venta es PESO
     
     # Relaciones
     venta = relationship("Venta", back_populates="items")

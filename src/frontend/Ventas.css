@@ -207,3 +207,21 @@
   padding: 0.3rem 0;
   color: #555;
 }
+
+/* Estilos para tipo de venta */
+.unidad-label {
+  margin-left: 0.5rem;
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: normal;
+}
+
+.tipo-venta-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #495057;
+}

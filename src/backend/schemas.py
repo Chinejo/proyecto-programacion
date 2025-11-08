@@ -2,9 +2,9 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from enum import Enum
 
-class TipoReceta(str, Enum):
+class TipoVenta(str, Enum):
     UNIDAD = "unidad"
-    KG = "kg"
+    PESO = "peso"
 
 # Schemas para Stock
 class StockBase(BaseModel):
@@ -46,8 +46,10 @@ class IngredienteRecetaResponse(IngredienteRecetaBase):
 class ProductoBase(BaseModel):
     nombre: str
     precio: float
-    stock: float
-    tipo_receta: TipoReceta = TipoReceta.UNIDAD
+    unidades: float = 0.0
+    peso_kg: float = 0.0
+    unidades_por_receta: float = 1.0
+    peso_por_receta: float = 1.0
 
 class ProductoCreate(ProductoBase):
     pass
@@ -55,8 +57,10 @@ class ProductoCreate(ProductoBase):
 class ProductoUpdate(BaseModel):
     nombre: Optional[str] = None
     precio: Optional[float] = None
-    stock: Optional[float] = None
-    tipo_receta: Optional[TipoReceta] = None
+    unidades: Optional[float] = None
+    peso_kg: Optional[float] = None
+    unidades_por_receta: Optional[float] = None
+    peso_por_receta: Optional[float] = None
 
 class ProductoResponse(ProductoBase):
     id: int
@@ -72,7 +76,9 @@ class PrepararRecetaRequest(BaseModel):
 # Schemas para Items de Venta
 class ItemVentaBase(BaseModel):
     producto_id: int
-    cantidad: int
+    cantidad: float
+    tipo_venta: TipoVenta
+    cantidad_peso_kg: Optional[float] = None
 
 class ItemVentaCreate(ItemVentaBase):
     pass
@@ -83,7 +89,9 @@ class ItemVentaResponse(BaseModel):
     producto_id: int
     producto_nombre: str
     producto_precio: float
-    cantidad: int
+    cantidad: float
+    tipo_venta: TipoVenta
+    cantidad_peso_kg: Optional[float] = None
     
     class Config:
         from_attributes = True
