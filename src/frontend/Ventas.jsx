@@ -285,7 +285,7 @@ function Ventas() {
               <div key={venta.id} className="venta-card">
                 <div className="venta-header">
                   <span className="venta-fecha">{fecha} - {hora}</span>
-                  <span className="venta-total">Total: ${venta.total}</span>
+                  <span className="venta-total">Total: ${Number(venta.total).toFixed(2)}</span>
                 </div>
                 <ul className="venta-items">
                   {venta.items.map(item => (

@@ -222,7 +222,7 @@ def preparar_receta(producto_id: int, preparar: schemas.PrepararRecetaRequest, d
 @app.get("/api/ventas", response_model=List[schemas.VentaResponse], tags=["Ventas"])
 def get_ventas(db: Session = Depends(get_db)):
     """Obtener todas las ventas"""
-    return db.query(models.Venta).all()
+    return db.query(models.Venta).order_by(models.Venta.id.desc()).all()
 
 @app.get("/api/ventas/{venta_id}", response_model=schemas.VentaResponse, tags=["Ventas"])
 def get_venta(venta_id: int, db: Session = Depends(get_db)):
