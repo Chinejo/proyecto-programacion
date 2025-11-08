@@ -234,14 +234,19 @@ function Ventas() {
               <div key={venta.id} className="venta-card">
                 <div className="venta-header">
                   <span className="venta-fecha">{fecha} - {hora}</span>
-                  <span className="venta-total">Total: ${venta.total}</span>
+                  <span className="venta-total">Total: ${Number(venta.total).toFixed(2)}</span>
                 </div>
                 <ul className="venta-items">
-                  {venta.items.map(item => (
-                    <li key={item.id || item.producto_id}>
-                      {item.producto_nombre || item.producto?.nombre} x {item.cantidad} = ${item.precio_unitario * item.cantidad}
-                    </li>
-                  ))}
+                  {venta.items.map(item => {
+                    const precioUnitario = Number(item.precio_unitario) || 0;  
+                    const cantidad = Number(item.cantidad) || 0;
+                    const subtotal = precioUnitario * cantidad;
+                    return (
+                      <li key={item.id || item.producto_id}>
+                        {item.producto_nombre || item.producto?.nombre} x {cantidad} = ${subtotal.toFixed(2)}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
