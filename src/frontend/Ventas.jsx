@@ -119,6 +119,20 @@ function Ventas() {
     setVentaActual([]);
   };
 
+  const formatearFecha = (fechaISO) => {
+    const fecha = new Date(fechaISO);
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const año = String(fecha.getFullYear());
+    const horas = String(fecha.getHours()).padStart(2, '0');
+    const minutos = String(fecha.getMinutes()).padStart(2, '0');
+    
+    return {
+      fecha: `${dia}-${mes}-${año}`,
+      hora: `${horas}:${minutos}`
+    };
+  };
+
   return (
     <div className="ventas-container">
       <Modal 
@@ -214,21 +228,24 @@ function Ventas() {
       {ventas.length > 0 && (
         <div className="historial-ventas">
           <h3>Historial de ventas:</h3>
-          {ventas.map(venta => (
-            <div key={venta.id} className="venta-card">
-              <div className="venta-header">
-                <span className="venta-fecha">{venta.fecha}</span>
-                <span className="venta-total">Total: ${venta.total}</span>
+          {ventas.map(venta => {
+            const { fecha, hora } = formatearFecha(venta.fecha);
+            return (
+              <div key={venta.id} className="venta-card">
+                <div className="venta-header">
+                  <span className="venta-fecha">{fecha} - {hora}</span>
+                  <span className="venta-total">Total: ${venta.total}</span>
+                </div>
+                <ul className="venta-items">
+                  {venta.items.map(item => (
+                    <li key={item.id || item.producto_id}>
+                      {item.producto_nombre || item.producto?.nombre} x {item.cantidad} = ${item.precio_unitario * item.cantidad}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="venta-items">
-                {venta.items.map(item => (
-                  <li key={item.id || item.producto_id}>
-                    {item.producto_nombre || item.producto?.nombre} x {item.cantidad} = ${item.precio_unitario * item.cantidad}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       </>
