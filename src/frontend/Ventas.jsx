@@ -13,6 +13,35 @@ function Ventas() {
   const [ventas, setVentas] = useState([]);
   const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
 
+  const getSafeNumber = (value, fallback = 0) => {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const getUnidadesPorReceta = (producto) => {
+    if (!producto) return 1;
+    const unidades = getSafeNumber(producto.unidades_por_receta, 1);
+    return unidades > 0 ? unidades : 1;
+  };
+
+  const getPesoPorReceta = (producto) => {
+    if (!producto) return 1;
+    const peso = getSafeNumber(producto.peso_por_receta, 1);
+    return peso > 0 ? peso : 1;
+  };
+
+  const getPrecioPorUnidad = (producto) => {
+    if (!producto) return 0;
+    const unidades = getUnidadesPorReceta(producto);
+    return unidades > 0 ? producto.precio / unidades : producto.precio;
+  };
+
+  const getPrecioPorKg = (producto) => {
+    if (!producto) return 0;
+    const peso = getPesoPorReceta(producto);
+    return peso > 0 ? producto.precio / peso : producto.precio;
+  };
+
   // Cargar productos y ventas al montar
   useEffect(() => {
     loadData();
@@ -111,17 +140,16 @@ function Ventas() {
   };
 
   const calcularSubtotal = (item) => {
-    const kg_por_unidad = item.producto.peso_por_receta / item.producto.unidades_por_receta;
-    
+    const producto = item.producto;
+    const cantidad = getSafeNumber(item.cantidad, 0);
+
     if (item.tipo_venta === 'unidad') {
-      // Precio por unidad
-      const precio_por_unidad = item.producto.precio;
-      return precio_por_unidad * item.cantidad;
-    } else {
-      // Precio por kg
-      const precio_por_kg = item.producto.precio / kg_por_unidad;
-      return precio_por_kg * item.cantidad;
+      const precioUnidad = getPrecioPorUnidad(producto);
+      return precioUnidad * cantidad;
     }
+
+    const precioKg = getPrecioPorKg(producto);
+    return precioKg * cantidad;
   };
 
   const calcularTotal = () => {
@@ -196,7 +224,7 @@ function Ventas() {
             <option value="">Seleccionar producto...</option>
             {productosDisponibles.map(producto => (
               <option key={producto.id} value={producto.id}>
-                {producto.nombre} - ${producto.precio} (Stock: {producto.unidades?.toFixed(2)} u / {producto.peso_kg?.toFixed(2)} kg)
+                {producto.nombre} - ${getPrecioPorUnidad(producto).toFixed(2)} /u | ${getPrecioPorKg(producto).toFixed(2)} /kg (Stock: {producto.unidades?.toFixed(2)} u / {producto.peso_kg?.toFixed(2)} kg)
               </option>
             ))}
           </select>
@@ -238,7 +266,11 @@ function Ventas() {
                 <tr key={index}>
                   <td>{item.producto.nombre}</td>
                   <td>{item.tipo_venta === 'unidad' ? 'Unidad' : 'Peso (kg)'}</td>
-                  <td>${item.producto.precio}</td>
+                  <td>
+                    {item.tipo_venta === 'unidad'
+                      ? `$${getPrecioPorUnidad(item.producto).toFixed(2)} /u`
+                      : `$${getPrecioPorKg(item.producto).toFixed(2)} /kg`}
+                  </td>
                   <td>
                     <input
                       type="number"
@@ -289,25 +321,15 @@ function Ventas() {
                 </div>
                 <ul className="venta-items">
                   {venta.items.map(item => {
-                    // Calcular el subtotal del item
-                    const producto = productosDisponibles.find(p => p.id === item.producto_id);
-                    let subtotal = 0;
-                    
-                    if (producto) {
-                      const kg_por_unidad = producto.peso_por_receta / producto.unidades_por_receta;
-                      
-                      if (item.tipo_venta === 'unidad') {
-                        subtotal = producto.precio * item.cantidad;
-                      } else {
-                        const precio_por_kg = producto.precio / kg_por_unidad;
-                        const peso = item.cantidad_peso_kg || item.cantidad;
-                        subtotal = precio_por_kg * peso;
-                      }
-                    }
-                    
+                    const cantidadBase = item.tipo_venta === 'unidad'
+                      ? getSafeNumber(item.cantidad, 0)
+                      : getSafeNumber(item.cantidad_peso_kg ?? item.cantidad, 0);
+                    const subtotal = (item.producto_precio || 0) * cantidadBase;
+                    const sufijo = item.tipo_venta === 'unidad' ? 'u' : 'kg';
+
                     return (
                       <li key={item.id || item.producto_id}>
-                        {item.producto_nombre || item.producto?.nombre} x {item.cantidad} - ${subtotal.toFixed(2)}
+                        {item.producto_nombre || item.producto?.nombre} · {cantidadBase} {sufijo} × ${getSafeNumber(item.producto_precio, 0).toFixed(2)} = ${subtotal.toFixed(2)}
                       </li>
                     );
                   })}

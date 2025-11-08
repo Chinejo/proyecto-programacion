@@ -3,13 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
+import atexit
 
 from src.backend import models
 from src.backend import schemas
-from src.backend.database import engine, get_db
-
-# Crear las tablas en la base de datos
-models.Base.metadata.create_all(bind=engine)
+from src.backend.database import engine, get_db, close_database_connection
 
 app = FastAPI(
     title="Panadería API",
@@ -25,6 +23,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Evento que se ejecuta al iniciar la aplicación"""
+    # Crear las tablas en la base de datos
+    models.Base.metadata.create_all(bind=engine)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Evento que se ejecuta al detener la aplicación"""
+    close_database_connection()
 
 # ==================== ENDPOINTS DE STOCK ====================
 
@@ -251,50 +260,53 @@ def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db)):
         producto = db.query(models.Producto).filter(models.Producto.id == item.producto_id).first()
         if not producto:
             raise HTTPException(status_code=404, detail=f"Producto con id {item.producto_id} no encontrado")
-        
-        # Calcular kg por unidad desde la receta
-        kg_por_unidad = producto.peso_por_receta / producto.unidades_por_receta if producto.unidades_por_receta > 0 else 0
-        
+
+        # Relación unidades/peso configurada en la receta
+        unidades_por_receta = producto.unidades_por_receta if producto.unidades_por_receta and producto.unidades_por_receta > 0 else 1
+        peso_por_receta = producto.peso_por_receta if producto.peso_por_receta and producto.peso_por_receta > 0 else 1
+
+        kg_por_unidad = peso_por_receta / unidades_por_receta if unidades_por_receta > 0 else 0
+
+        # Calcular precios derivados
+        precio_por_unidad = producto.precio / unidades_por_receta if unidades_por_receta > 0 else producto.precio
+        precio_por_kg = producto.precio / peso_por_receta if peso_por_receta > 0 else producto.precio
+
         # Determinar qué se vende y calcular descuentos
         if item.tipo_venta == schemas.TipoVenta.UNIDAD:
-            # Venta por unidad
             unidades_a_descontar = item.cantidad
-            peso_a_descontar = item.cantidad * kg_por_unidad
-            
-            # Verificar stock de unidades
+            peso_a_descontar = item.cantidad * kg_por_unidad if kg_por_unidad > 0 else 0
+
             if producto.unidades < unidades_a_descontar:
                 raise HTTPException(
                     status_code=400,
                     detail=f"No hay suficiente stock de {producto.nombre}. Disponible: {producto.unidades} unidades, solicitado: {unidades_a_descontar}"
                 )
-            
-            # Calcular precio (por unidad)
-            precio_unitario = producto.precio
-            subtotal = precio_unitario * item.cantidad
-            
+
+            subtotal = precio_por_unidad * item.cantidad
+            precio_aplicado = precio_por_unidad
+
         else:  # PESO
-            # Venta por peso (kg)
             peso_a_descontar = item.cantidad_peso_kg if item.cantidad_peso_kg else item.cantidad
-            unidades_a_descontar = peso_a_descontar / kg_por_unidad if kg_por_unidad > 0 else 0
-            
-            # Verificar stock de peso
+            if peso_a_descontar <= 0:
+                raise HTTPException(status_code=400, detail="La cantidad de peso a vender debe ser mayor a 0")
+
             if producto.peso_kg < peso_a_descontar:
                 raise HTTPException(
                     status_code=400,
                     detail=f"No hay suficiente stock de {producto.nombre}. Disponible: {producto.peso_kg} kg, solicitado: {peso_a_descontar} kg"
                 )
-            
-            # Calcular precio proporcional al peso
-            precio_por_kg = producto.precio / kg_por_unidad if kg_por_unidad > 0 else producto.precio
+
+            unidades_a_descontar = peso_a_descontar / kg_por_unidad if kg_por_unidad > 0 else 0
             subtotal = precio_por_kg * peso_a_descontar
-        
+            precio_aplicado = precio_por_kg
+
         total += subtotal
-        
+
         items_data.append({
             "producto": producto,
             "producto_id": producto.id,
             "producto_nombre": producto.nombre,
-            "producto_precio": producto.precio,
+            "precio_aplicado": precio_aplicado,
             "cantidad": item.cantidad,
             "tipo_venta": item.tipo_venta,
             "cantidad_peso_kg": item.cantidad_peso_kg,
@@ -316,7 +328,7 @@ def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db)):
             venta_id=db_venta.id,
             producto_id=item_data["producto_id"],
             producto_nombre=item_data["producto_nombre"],
-            producto_precio=item_data["producto_precio"],
+            producto_precio=item_data["precio_aplicado"],
             cantidad=item_data["cantidad"],
             tipo_venta=item_data["tipo_venta"],
             cantidad_peso_kg=item_data["cantidad_peso_kg"]

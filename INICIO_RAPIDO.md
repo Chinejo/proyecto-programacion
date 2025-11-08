@@ -2,7 +2,7 @@
 
 ## Pasos para Inicializar
 
-### 1️⃣ Eliminar Base de Datos Actual
+### 1️⃣ Eliminar Base de Datos Actual (si existe)
 ```powershell
 Remove-Item panaderia.db -ErrorAction SilentlyContinue
 ```
@@ -28,6 +28,27 @@ npm run dev
 
 ### 5️⃣ Probar el Sistema
 Abrir: `http://localhost:5173`
+
+---
+
+## 🔧 Gestión de Base de Datos
+
+### Problema de Conexión SQLite
+SQLite bloquea el archivo `panaderia.db` mientras el servidor está ejecutándose. Para eliminar o modificar el archivo:
+
+1. **Detener el servidor** (Ctrl+C en la terminal del backend)
+2. **Esperar unos segundos** para que se cierren todas las conexiones
+3. **Eliminar el archivo** si es necesario
+
+### Reiniciar Base de Datos
+```powershell
+# 1. Detener el servidor backend
+# 2. Eliminar archivo
+Remove-Item panaderia.db -ErrorAction SilentlyContinue
+# 3. Reiniciar el servidor
+python -m uvicorn src.backend.main:app --reload
+# 4. Inicializar datos nuevamente desde /docs
+```
 
 ---
 
