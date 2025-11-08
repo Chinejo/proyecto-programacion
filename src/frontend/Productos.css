@@ -530,3 +530,29 @@
   color: #6c757d;
   margin-top: 0.25rem;
 }
+
+/* Sección deshabilitada */
+.form-section-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.receta-info-resumen {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+  border: 1px solid #c3e6cb;
+  font-size: 0.95rem;
+}
+
+/* Estilos para el botón deshabilitado */
+.btn-agregar-producto:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-agregar-producto:disabled:hover {
+  background-color: #ccc;
+}

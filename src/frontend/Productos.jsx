@@ -8,12 +8,15 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
   const [loading, setLoading] = useState(true);
   const [nuevoProducto, setNuevoProducto] = useState({ 
     nombre: '', 
-    precio: '', 
+    precio_unidad: '', 
+    precio_kg: '',
     unidades: '0', 
     peso_kg: '0',
-    unidades_por_receta: '1',
-    peso_por_receta: '1'
+    unidades_por_receta: '',
+    peso_por_receta: ''
   });
+  const [precioEditMode, setPrecioEditMode] = useState('unidad'); // 'unidad' o 'kg'
+  const [mostrarStockInicial, setMostrarStockInicial] = useState(false);
   const [editando, setEditando] = useState(null);
   const [mostrarReceta, setMostrarReceta] = useState(null);
   const [ingredienteReceta, setIngredienteReceta] = useState({ ingrediente: '', cantidad: '', unidad: 'kg' });
@@ -46,29 +49,48 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
 
   const agregarProducto = async (e) => {
     e.preventDefault();
-    if (nuevoProducto.nombre && nuevoProducto.precio && nuevoProducto.unidades_por_receta && nuevoProducto.peso_por_receta) {
-      try {
-        const producto = await productosAPI.create({
-          nombre: nuevoProducto.nombre,
-          precio: parseFloat(nuevoProducto.precio),
-          unidades: parseFloat(nuevoProducto.unidades || 0),
-          peso_kg: parseFloat(nuevoProducto.peso_kg || 0),
-          unidades_por_receta: parseFloat(nuevoProducto.unidades_por_receta),
-          peso_por_receta: parseFloat(nuevoProducto.peso_por_receta)
-        });
-        setProductos([...productos, producto]);
-        setNuevoProducto({ 
-          nombre: '', 
-          precio: '', 
-          unidades: '0', 
-          peso_kg: '0',
-          unidades_por_receta: '1',
-          peso_por_receta: '1'
-        });
-        mostrarModal('¡Éxito!', 'Producto agregado correctamente', 'success');
-      } catch (error) {
-        mostrarModal('Error', `Error al agregar producto: ${error.message}`, 'error');
-      }
+    
+    // Validar que estén todos los campos requeridos
+    if (!nuevoProducto.nombre || !nuevoProducto.nombre.trim()) {
+      mostrarModal('Campo requerido', 'El nombre del producto es obligatorio', 'warning');
+      return;
+    }
+    
+    if (!nuevoProducto.unidades_por_receta || !nuevoProducto.peso_por_receta) {
+      mostrarModal('Receta incompleta', 'Debes definir la relación unidades/kg de la receta', 'warning');
+      return;
+    }
+    
+    const precioFinal = precioEditMode === 'unidad' ? parseFloat(nuevoProducto.precio_unidad) : parseFloat(nuevoProducto.precio_kg);
+    if (!precioFinal || precioFinal <= 0) {
+      mostrarModal('Precio requerido', 'Debes ingresar un precio válido', 'warning');
+      return;
+    }
+    
+    try {
+      const producto = await productosAPI.create({
+        nombre: nuevoProducto.nombre,
+        precio: precioFinal,
+        unidades: parseFloat(nuevoProducto.unidades || 0),
+        peso_kg: parseFloat(nuevoProducto.peso_kg || 0),
+        unidades_por_receta: parseFloat(nuevoProducto.unidades_por_receta),
+        peso_por_receta: parseFloat(nuevoProducto.peso_por_receta)
+      });
+      setProductos([...productos, producto]);
+      setNuevoProducto({ 
+        nombre: '', 
+        precio_unidad: '', 
+        precio_kg: '',
+        unidades: '0', 
+        peso_kg: '0',
+        unidades_por_receta: '',
+        peso_por_receta: ''
+      });
+      setPrecioEditMode('unidad');
+      setMostrarStockInicial(false);
+      mostrarModal('¡Éxito!', 'Producto agregado correctamente', 'success');
+    } catch (error) {
+      mostrarModal('Error', `Error al agregar producto: ${error.message}`, 'error');
     }
   };
 
@@ -155,9 +177,121 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
 
   const iniciarEdicion = (producto) => {
     setEditando({
-      ...producto
+      ...producto,
+      editando_campo: null // 'unidades' o 'peso'
     });
   };
+
+  const handleCantidadChange = (field, value) => {
+    if (!editando) return;
+    
+    const newValue = parseFloat(value) || 0;
+    const ratio = editando.peso_por_receta / editando.unidades_por_receta;
+    
+    if (field === 'unidades') {
+      setEditando({
+        ...editando,
+        unidades: newValue,
+        peso_kg: newValue * ratio,
+        editando_campo: 'unidades'
+      });
+    } else if (field === 'peso') {
+      setEditando({
+        ...editando,
+        peso_kg: newValue,
+        unidades: newValue / ratio,
+        editando_campo: 'peso'
+      });
+    }
+  };
+
+  const handlePrecioChange = (tipo, value) => {
+    const precio = parseFloat(value) || 0;
+    const precioUnitario = editando.precio / editando.unidades_por_receta; // precio por unidad
+    const precioPorKg = editando.precio / editando.peso_por_receta; // precio por kg
+    
+    if (tipo === 'unidad') {
+      // Si edita precio por unidad, calcular nuevo precio base
+      const nuevoPrecio = precio * editando.unidades_por_receta;
+      setEditando({
+        ...editando,
+        precio: nuevoPrecio,
+        editando_precio: 'unidad'
+      });
+    } else if (tipo === 'kg') {
+      // Si edita precio por kg, calcular nuevo precio base
+      const nuevoPrecio = precio * editando.peso_por_receta;
+      setEditando({
+        ...editando,
+        precio: nuevoPrecio,
+        editando_precio: 'kg'
+      });
+    }
+  };
+
+  const handlePrecioNuevoChange = (tipo, value) => {
+    const precio = parseFloat(value) || 0;
+    const unidadesPorReceta = parseFloat(nuevoProducto.unidades_por_receta) || 1;
+    const pesoPorReceta = parseFloat(nuevoProducto.peso_por_receta) || 1;
+    
+    if (tipo === 'unidad') {
+      const precioTotal = precio * unidadesPorReceta;
+      const precioKg = precioTotal / pesoPorReceta;
+      setNuevoProducto({
+        ...nuevoProducto,
+        precio_unidad: value,
+        precio_kg: precioKg.toFixed(2)
+      });
+      setPrecioEditMode('unidad');
+    } else if (tipo === 'kg') {
+      const precioTotal = precio * pesoPorReceta;
+      const precioUnidad = precioTotal / unidadesPorReceta;
+      setNuevoProducto({
+        ...nuevoProducto,
+        precio_kg: value,
+        precio_unidad: precioUnidad.toFixed(2)
+      });
+      setPrecioEditMode('kg');
+    }
+  };
+
+  const handleRecetaChange = (field, value) => {
+    const newReceta = {
+      ...nuevoProducto,
+      [field]: value
+    };
+    
+    setNuevoProducto(newReceta);
+    
+    // Si ambos campos de receta están llenos y hay precio, recalcular el precio opuesto
+    if (newReceta.unidades_por_receta && newReceta.peso_por_receta) {
+      const unidadesPorReceta = parseFloat(newReceta.unidades_por_receta);
+      const pesoPorReceta = parseFloat(newReceta.peso_por_receta);
+      
+      if (precioEditMode === 'unidad' && newReceta.precio_unidad) {
+        const precio = parseFloat(newReceta.precio_unidad);
+        const precioTotal = precio * unidadesPorReceta;
+        const precioKg = precioTotal / pesoPorReceta;
+        setNuevoProducto({
+          ...newReceta,
+          precio_kg: precioKg.toFixed(2)
+        });
+      } else if (precioEditMode === 'kg' && newReceta.precio_kg) {
+        const precio = parseFloat(newReceta.precio_kg);
+        const precioTotal = precio * pesoPorReceta;
+        const precioUnidad = precioTotal / unidadesPorReceta;
+        setNuevoProducto({
+          ...newReceta,
+          precio_unidad: precioUnidad.toFixed(2)
+        });
+      }
+    }
+  };
+
+  // Validar si los campos están habilitados
+  const recetaCompleta = nuevoProducto.unidades_por_receta && nuevoProducto.peso_por_receta;
+  const precioCompleto = (nuevoProducto.precio_unidad && parseFloat(nuevoProducto.precio_unidad) > 0) || 
+                         (nuevoProducto.precio_kg && parseFloat(nuevoProducto.precio_kg) > 0);
 
   const guardarEdicion = async () => {
     if (!editando.nombre || !editando.nombre.trim()) {
@@ -225,50 +359,12 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
               required
             />
           </div>
-          <div className="form-field">
-            <label>Precio ($) *</label>
-            <input
-              type="number"
-              placeholder="Ej: 1600"
-              step="0.01"
-              value={nuevoProducto.precio}
-              onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: e.target.value })}
-              required
-            />
-            <small>Precio de referencia del producto</small>
-          </div>
         </div>
 
         <div className="form-section">
-          <h4>📦 Stock Inicial (opcional - normalmente 0)</h4>
-          <div className="form-row">
-            <div className="form-field">
-              <label>Unidades en stock</label>
-              <input
-                type="number"
-                placeholder="0"
-                step="0.01"
-                value={nuevoProducto.unidades}
-                onChange={(e) => setNuevoProducto({ ...nuevoProducto, unidades: e.target.value })}
-              />
-            </div>
-            <div className="form-field">
-              <label>Peso en stock (kg)</label>
-              <input
-                type="number"
-                placeholder="0"
-                step="0.01"
-                value={nuevoProducto.peso_kg}
-                onChange={(e) => setNuevoProducto({ ...nuevoProducto, peso_kg: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="form-section">
-          <h4>🔧 Configuración de Receta *</h4>
+          <h4>� 1. Configuración de Receta *</h4>
           <p className="form-help">
-            Define cuántas unidades y cuánto peso produce una preparación de la receta.
+            Primero define cuántas unidades y cuánto peso produce una preparación de la receta.
             Ejemplo: 1 receta de pan produce 8 rodajas que pesan 1 kg en total.
           </p>
           <div className="form-row">
@@ -278,8 +374,9 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                 type="number"
                 placeholder="Ej: 8"
                 step="0.01"
+                min="0.01"
                 value={nuevoProducto.unidades_por_receta}
-                onChange={(e) => setNuevoProducto({ ...nuevoProducto, unidades_por_receta: e.target.value })}
+                onChange={(e) => handleRecetaChange('unidades_por_receta', e.target.value)}
                 required
               />
               <small>¿Cuántas unidades produce?</small>
@@ -290,16 +387,119 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                 type="number"
                 placeholder="Ej: 1"
                 step="0.01"
+                min="0.01"
                 value={nuevoProducto.peso_por_receta}
-                onChange={(e) => setNuevoProducto({ ...nuevoProducto, peso_por_receta: e.target.value })}
+                onChange={(e) => handleRecetaChange('peso_por_receta', e.target.value)}
                 required
               />
               <small>¿Cuántos kg produce en total?</small>
             </div>
           </div>
+          {recetaCompleta && (
+            <div className="receta-info-resumen">
+              ✓ Cada unidad pesa aproximadamente {(parseFloat(nuevoProducto.peso_por_receta) / parseFloat(nuevoProducto.unidades_por_receta) * 1000).toFixed(0)}g
+            </div>
+          )}
         </div>
 
-        <button type="submit" className="btn-agregar-producto">Agregar Producto</button>
+        <div className={`form-section ${!recetaCompleta ? 'form-section-disabled' : ''}`}>
+          <h4>� 2. Precio * {!recetaCompleta && '(Completa la receta primero)'}</h4>
+          <p className="form-help">
+            Ingresa el precio por unidad o por kilogramo. El otro valor se calculará automáticamente según la receta.
+          </p>
+          <div className="form-row">
+            <div className="form-field">
+              <label>Precio por unidad ($)</label>
+              <input
+                type="number"
+                placeholder="Ej: 200"
+                step="0.01"
+                min="0"
+                value={nuevoProducto.precio_unidad}
+                onChange={(e) => handlePrecioNuevoChange('unidad', e.target.value)}
+                readOnly={precioEditMode === 'kg'}
+                disabled={!recetaCompleta}
+                style={{ 
+                  backgroundColor: precioEditMode === 'kg' ? '#f0f0f0' : 'white',
+                  cursor: !recetaCompleta ? 'not-allowed' : 'text'
+                }}
+              />
+              <small>{precioEditMode === 'kg' ? '(Calculado automáticamente)' : recetaCompleta ? 'Ingresa aquí el precio' : 'Completa la receta primero'}</small>
+            </div>
+            <div className="form-field">
+              <label>Precio por kg ($)</label>
+              <input
+                type="number"
+                placeholder="Ej: 1600"
+                step="0.01"
+                min="0"
+                value={nuevoProducto.precio_kg}
+                onChange={(e) => handlePrecioNuevoChange('kg', e.target.value)}
+                readOnly={precioEditMode === 'unidad'}
+                disabled={!recetaCompleta}
+                style={{ 
+                  backgroundColor: precioEditMode === 'unidad' ? '#f0f0f0' : 'white',
+                  cursor: !recetaCompleta ? 'not-allowed' : 'text'
+                }}
+              />
+              <small>{precioEditMode === 'unidad' ? '(Calculado automáticamente)' : recetaCompleta ? 'Ingresa aquí el precio' : 'Completa la receta primero'}</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h4 style={{cursor: 'pointer', userSelect: 'none'}} onClick={() => setMostrarStockInicial(!mostrarStockInicial)}>
+            📦 3. Stock Inicial (opcional) {mostrarStockInicial ? '▼' : '▶'}
+          </h4>
+          {mostrarStockInicial && (
+            <>
+              <p className="form-help">
+                Normalmente el stock inicial es 0, ya que se produce mediante recetas. Solo completa esto si ya tienes stock existente.
+              </p>
+              <div className="form-row">
+                <div className="form-field">
+                  <label>Unidades en stock</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    step="0.01"
+                    min="0"
+                    value={nuevoProducto.unidades}
+                    onChange={(e) => setNuevoProducto({ ...nuevoProducto, unidades: e.target.value })}
+                  />
+                </div>
+                <div className="form-field">
+                  <label>Peso en stock (kg)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    step="0.01"
+                    min="0"
+                    value={nuevoProducto.peso_kg}
+                    onChange={(e) => setNuevoProducto({ ...nuevoProducto, peso_kg: e.target.value })}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <button 
+          type="submit" 
+          className="btn-agregar-producto"
+          disabled={!recetaCompleta || !precioCompleto}
+          style={{
+            opacity: (!recetaCompleta || !precioCompleto) ? 0.5 : 1,
+            cursor: (!recetaCompleta || !precioCompleto) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          Agregar Producto
+        </button>
+        {(!recetaCompleta || !precioCompleto) && (
+          <p style={{textAlign: 'center', color: '#666', fontSize: '0.9em', marginTop: '10px'}}>
+            Completa la configuración de receta y el precio para poder agregar el producto
+          </p>
+        )}
       </form>
 
       <div className="productos-list">
@@ -334,27 +534,51 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                       />
                     </td>
                     <td>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={(editando.precio / editando.unidades_por_receta).toFixed(2)}
+                          onChange={(e) => handlePrecioChange('unidad', e.target.value)}
+                          readOnly={editando.editando_precio === 'kg'}
+                          style={{ 
+                            backgroundColor: editando.editando_precio === 'kg' ? '#f0f0f0' : 'white',
+                            fontSize: '0.9em'
+                          }}
+                          title="Precio por unidad"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={(editando.precio / editando.peso_por_receta).toFixed(2)}
+                          onChange={(e) => handlePrecioChange('kg', e.target.value)}
+                          readOnly={editando.editando_precio === 'unidad'}
+                          style={{ 
+                            backgroundColor: editando.editando_precio === 'unidad' ? '#f0f0f0' : 'white',
+                            fontSize: '0.9em'
+                          }}
+                          title="Precio por kg"
+                        />
+                      </div>
+                    </td>
+                    <td>
                       <input
                         type="number"
                         step="0.01"
-                        value={editando.precio}
-                        onChange={(e) => setEditando({ ...editando, precio: e.target.value })}
+                        value={editando.unidades.toFixed(2)}
+                        onChange={(e) => handleCantidadChange('unidades', e.target.value)}
+                        readOnly={editando.editando_campo === 'peso'}
+                        style={{ backgroundColor: editando.editando_campo === 'peso' ? '#f0f0f0' : 'white' }}
                       />
                     </td>
                     <td>
                       <input
                         type="number"
                         step="0.01"
-                        value={editando.unidades}
-                        onChange={(e) => setEditando({ ...editando, unidades: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editando.peso_kg}
-                        onChange={(e) => setEditando({ ...editando, peso_kg: e.target.value })}
+                        value={editando.peso_kg.toFixed(2)}
+                        onChange={(e) => handleCantidadChange('peso', e.target.value)}
+                        readOnly={editando.editando_campo === 'unidades'}
+                        style={{ backgroundColor: editando.editando_campo === 'unidades' ? '#f0f0f0' : 'white' }}
                       />
                     </td>
                     <td>
@@ -385,7 +609,12 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
                 ) : (
                   <>
                     <td>{producto.nombre}</td>
-                    <td>${producto.precio}</td>
+                    <td>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.9em'}}>
+                        <span>${(producto.precio / producto.unidades_por_receta).toFixed(2)} U.</span>
+                        <span>${(producto.precio / producto.peso_por_receta).toFixed(2)} Kg.</span>
+                      </div>
+                    </td>
                     <td>{producto.unidades?.toFixed(2) || 0}</td>
                     <td>{producto.peso_kg?.toFixed(2) || 0} kg</td>
                     <td>{producto.unidades_por_receta?.toFixed(1) || 1}u / {producto.peso_por_receta?.toFixed(2) || 1}kg</td>
