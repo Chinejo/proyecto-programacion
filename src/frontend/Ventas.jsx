@@ -288,12 +288,29 @@ function Ventas() {
                   <span className="venta-total">Total: ${Number(venta.total).toFixed(2)}</span>
                 </div>
                 <ul className="venta-items">
-                  {venta.items.map(item => (
-                    <li key={item.id || item.producto_id}>
-                      {item.producto_nombre || item.producto?.nombre} x {item.cantidad} 
-                      {item.tipo_venta && <span className="tipo-venta-badge">({item.tipo_venta === 'unidad' ? 'unidad' : item.cantidad_peso_kg + ' kg'})</span>}
-                    </li>
-                  ))}
+                  {venta.items.map(item => {
+                    // Calcular el subtotal del item
+                    const producto = productosDisponibles.find(p => p.id === item.producto_id);
+                    let subtotal = 0;
+                    
+                    if (producto) {
+                      const kg_por_unidad = producto.peso_por_receta / producto.unidades_por_receta;
+                      
+                      if (item.tipo_venta === 'unidad') {
+                        subtotal = producto.precio * item.cantidad;
+                      } else {
+                        const precio_por_kg = producto.precio / kg_por_unidad;
+                        const peso = item.cantidad_peso_kg || item.cantidad;
+                        subtotal = precio_por_kg * peso;
+                      }
+                    }
+                    
+                    return (
+                      <li key={item.id || item.producto_id}>
+                        {item.producto_nombre || item.producto?.nombre} x {item.cantidad} - ${subtotal.toFixed(2)}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
