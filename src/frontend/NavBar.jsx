@@ -4,7 +4,7 @@ function Navbar({ currentView, setCurrentView }) {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <img src="/src/assets/logo4.png" alt="Logo de la panadería" />
+        <img src="/src/assets/logo-v2.png" alt="Logo de la panadería" />
       </div>
       <div className="navbar-menu">
         <button 
