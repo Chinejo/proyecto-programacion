@@ -1,0 +1,77 @@
+.modal-overlay-confirmar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2001;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.modal-box-confirmar {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 450px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+}
+
+.modal-icono-confirmar {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #ffc107;
+}
+
+.modal-titulo-confirmar {
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.modal-mensaje-confirmar {
+  color: #666;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.modal-botones-confirmar {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.modal-btn-cancelar,
+.modal-btn-confirmar {
+  padding: 0.7rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.modal-btn-cancelar {
+  background-color: #6c757d;
+  color: white;
+}
+
+.modal-btn-cancelar:hover {
+  background-color: #5a6268;
+}
+
+.modal-btn-confirmar {
+  background-color: #dc3545;
+  color: white;
+}
+
+.modal-btn-confirmar:hover {
+  background-color: #c82333;
+}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './Productos.css';
 import { productosAPI, recetasAPI } from '../services/api';
 import Modal from './Modal';
+import ModalConfirmar from './ModalConfirmar';
 
 function Productos({ stockItems, setStockItems, reloadStock }) {
   const [productos, setProductos] = useState([]);
@@ -22,6 +23,12 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
   const [mostrarReceta, setMostrarReceta] = useState(null);
   const [ingredienteReceta, setIngredienteReceta] = useState({ ingrediente: '', cantidad: '', unidad: '' });
   const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
+  const [modalConfirmar, setModalConfirmar] = useState({ 
+    isOpen: false, 
+    titulo: '', 
+    mensaje: '', 
+    onConfirm: null 
+  });
 
   // Cargar productos desde la API al montar
   useEffect(() => {
@@ -172,26 +179,30 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
   };
 
   const eliminarIngredienteReceta = async (productoId, ingredienteId) => {
-    if (!confirm('¿Estás seguro de eliminar este ingrediente?')) return;
+    setModalConfirmar({
+      isOpen: true,
+      titulo: '¿Eliminar ingrediente?',
+      mensaje: '¿Estás seguro de que deseas eliminar este ingrediente de la receta?',
+      onConfirm: async () => {
+        try {
+          await recetasAPI.deleteIngrediente(productoId, ingredienteId);
+          
+          setProductos(productos.map(p => {
+            if (p.id === productoId) {
+              return {
+                ...p,
+                receta: p.receta.filter(ing => ing.id !== ingredienteId)
+              };
+            }
+            return p;
+          }));
 
-    try {
-      await recetasAPI.deleteIngrediente(productoId, ingredienteId);
-      
-      // Actualizar el producto en el estado local
-      setProductos(productos.map(p => {
-        if (p.id === productoId) {
-          return {
-            ...p,
-            receta: p.receta.filter(ing => ing.id !== ingredienteId)
-          };
+          mostrarModal('¡Éxito!', 'Ingrediente eliminado correctamente', 'success');
+        } catch (error) {
+          mostrarModal('Error', `Error al eliminar ingrediente: ${error.message}`, 'error');
         }
-        return p;
-      }));
-
-      mostrarModal('¡Éxito!', 'Ingrediente eliminado correctamente', 'success');
-    } catch (error) {
-      mostrarModal('Error', `Error al eliminar ingrediente: ${error.message}`, 'error');
-    }
+      }
+    });
   };
 
   const iniciarEdicion = (producto) => {
@@ -341,15 +352,20 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
   };
 
   const eliminarProducto = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar este producto?')) return;
-
-    try {
-      await productosAPI.delete(id);
-      await loadProductos();
-      mostrarModal('¡Éxito!', 'Producto eliminado correctamente', 'success');
-    } catch (error) {
-      mostrarModal('Error', `Error al eliminar producto: ${error.message}`, 'error');
-    }
+    setModalConfirmar({
+      isOpen: true,
+      titulo: '¿Eliminar producto?',
+      mensaje: '¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        try {
+          await productosAPI.delete(id);
+          await loadProductos();
+          mostrarModal('¡Éxito!', 'Producto eliminado correctamente', 'success');
+        } catch (error) {
+          mostrarModal('Error', `Error al eliminar producto: ${error.message}`, 'error');
+        }
+      }
+    });
   };
 
   return (
@@ -360,6 +376,14 @@ function Productos({ stockItems, setStockItems, reloadStock }) {
         titulo={modal.titulo}
         mensaje={modal.mensaje}
         tipo={modal.tipo}
+      />
+      
+      <ModalConfirmar
+        isOpen={modalConfirmar.isOpen}
+        onClose={() => setModalConfirmar({ ...modalConfirmar, isOpen: false })}
+        onConfirm={modalConfirmar.onConfirm}
+        titulo={modalConfirmar.titulo}
+        mensaje={modalConfirmar.mensaje}
       />
       
       <h2>Gestión de Productos</h2>

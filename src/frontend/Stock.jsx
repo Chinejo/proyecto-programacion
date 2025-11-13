@@ -2,11 +2,18 @@ import { useState } from 'react';
 import './Stock.css';
 import { stockAPI } from '../services/api';
 import Modal from './Modal';
+import ModalConfirmar from './ModalConfirmar';
 
 function Stock({ stockItems, setStockItems, reloadStock }) {
   const [nuevoItem, setNuevoItem] = useState({ nombre: '', cantidad: '', unidad: 'kg' });
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, titulo: '', mensaje: '', tipo: 'info' });
+  const [modalConfirmar, setModalConfirmar] = useState({ 
+    isOpen: false, 
+    titulo: '', 
+    mensaje: '', 
+    onConfirm: null 
+  });
 
   const mostrarModal = (titulo, mensaje, tipo = 'info') => {
     setModal({ isOpen: true, titulo, mensaje, tipo });
@@ -51,15 +58,20 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
   };
 
   const eliminarItem = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar este ingrediente?')) return;
-    
-    try {
-      await stockAPI.delete(id);
-      setStockItems(stockItems.filter(item => item.id !== id));
-      mostrarModal('¡Éxito!', 'Ingrediente eliminado correctamente', 'success');
-    } catch (error) {
-      mostrarModal('Error', `Error al eliminar ingrediente: ${error.message}`, 'error');
-    }
+    setModalConfirmar({
+      isOpen: true,
+      titulo: '¿Eliminar ingrediente?',
+      mensaje: '¿Estás seguro de que deseas eliminar este ingrediente del inventario? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        try {
+          await stockAPI.delete(id);
+          setStockItems(stockItems.filter(item => item.id !== id));
+          mostrarModal('¡Éxito!', 'Ingrediente eliminado correctamente', 'success');
+        } catch (error) {
+          mostrarModal('Error', `Error al eliminar ingrediente: ${error.message}`, 'error');
+        }
+      }
+    });
   };
 
   return (
@@ -70,6 +82,14 @@ function Stock({ stockItems, setStockItems, reloadStock }) {
         titulo={modal.titulo}
         mensaje={modal.mensaje}
         tipo={modal.tipo}
+      />
+      
+      <ModalConfirmar
+        isOpen={modalConfirmar.isOpen}
+        onClose={() => setModalConfirmar({ ...modalConfirmar, isOpen: false })}
+        onConfirm={modalConfirmar.onConfirm}
+        titulo={modalConfirmar.titulo}
+        mensaje={modalConfirmar.mensaje}
       />
       
       <h2>Gestión de Ingredientes</h2>
